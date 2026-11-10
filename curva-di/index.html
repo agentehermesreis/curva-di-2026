@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>O ajuste da curva DI — 2028, 2032 e 2037 | Simone Reis</title>
+<link rel="canonical" href="https://simone.rreis.app/curva-di/">
+<meta name="description" content="Como a curva de juros DI se ajustou após o 1º e o 2º turno de 2026, no choque da pandemia (2020) e no caso Americanas (jan/2023).">
+<meta property="og:url" content="https://simone.rreis.app/curva-di/">
+<meta property="og:title" content="O ajuste da curva DI — 2028, 2032 e 2037">
+<meta property="og:description" content="Eleição 2026, pandemia 2020 e caso Americanas: os três regimes comparados nos vértices 2028, 2032 e 2037.">
+<meta property="og:image" content="assets/chart_vertices.png">
+<style>
+:root{
+  --bg:#091b1e; --card:#133134; --line:#1f4448; --acc:#a7cd3e;
+  --txt:#f7f8f7; --mut:#8fa8ac; --neg:#fd7979; --pos:#53ff75;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  line-height:1.6;-webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+a{color:var(--acc);text-decoration:none}
+a:hover{text-decoration:underline}
+header.top{
+  position:sticky;top:0;z-index:10;background:rgba(9,27,30,.92);
+  backdrop-filter:blur(8px);border-bottom:1px solid var(--line);
+}
+header.top .wrap{display:flex;align-items:center;justify-content:space-between;height:62px;gap:16px}
+.brand{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+.brand b{color:var(--acc);font-weight:700}
+.btn{
+  display:inline-block;padding:10px 18px;border-radius:999px;font-size:13px;font-weight:700;
+  background:var(--acc);color:#0b1a1c;border:1px solid var(--acc);transition:.15s;
+}
+.btn:hover{filter:brightness(1.08);text-decoration:none}
+.btn.ghost{background:transparent;color:var(--txt);border:1px solid var(--line)}
+.btn.ghost:hover{border-color:var(--acc);color:var(--acc)}
+.hero{padding:76px 0 40px;border-bottom:1px solid var(--line)}
+.kicker{color:var(--acc);font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase}
+h1{font-size:clamp(32px,5vw,54px);line-height:1.08;margin:14px 0 12px;letter-spacing:-.02em}
+.lede{font-size:clamp(16px,2vw,20px);color:var(--mut);max-width:760px;margin:0}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:34px 0 0}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.kpi .lab{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+.kpi .val{font-size:22px;font-weight:700;margin:6px 0 2px}
+.kpi .dlt{font-size:15px;font-weight:700;color:var(--neg)}
+section{padding:64px 0;border-bottom:1px solid var(--line)}
+h2{font-size:clamp(24px,3.2vw,34px);margin:8px 0 10px;letter-spacing:-.015em}
+.sub{color:var(--mut);margin:0 0 28px;max-width:820px}
+figure{margin:0}
+figure img{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:14px;background:#0d2427}
+figcaption{font-size:13px;color:var(--mut);margin-top:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:start}
+.note{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:12px;padding:18px 20px}
+.note p{margin:0 0 10px}
+.note p:last-child{margin:0}
+.accent{color:var(--acc)}
+.neg{color:var(--neg)}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{padding:12px 10px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}
+thead th{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);font-weight:600}
+tbody tr:last-child td{border-bottom:none}
+ul.concl{list-style:none;padding:0;margin:0;counter-reset:c}
+ul.concl li{position:relative;padding:16px 0 16px 46px;border-bottom:1px solid var(--line)}
+ul.concl li:last-child{border-bottom:none}
+ul.concl li:before{
+  counter-increment:c;content:counter(c);position:absolute;left:0;top:14px;
+  width:28px;height:28px;border-radius:50%;background:var(--card);border:1px solid var(--acc);
+  color:var(--acc);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;
+}
+.dl{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px}
+footer{padding:44px 0 60px;color:var(--mut);font-size:13px}
+footer p{margin:6px 0}
+.tag{display:inline-block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:4px 10px;margin:0 8px 8px 0}
+@media (max-width:860px){
+  .kpis{grid-template-columns:1fr}
+  .grid2{grid-template-columns:1fr;gap:24px}
+  header.top .wrap{height:58px}
+  .brand{font-size:11px}
+}
+@media (max-width:600px){
+  header.top .wrap{height:auto;min-height:58px;padding:10px 0;flex-wrap:wrap;row-gap:8px}
+  .brand{width:100%;font-size:11px}
+  .btn{padding:8px 14px;font-size:12px}
+  .hero{padding:48px 0 32px}
+  section{padding:48px 0}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><a href="../">← Análises</a> &nbsp;·&nbsp; <b>Curva DI</b> &nbsp;·&nbsp; 2028 · 2032 · 2037</div>
+    <div>
+      <a class="btn ghost" href="Curva_DI_2028_2032_2037.pptx" download>PPTX</a>
+      <a class="btn" href="Curva_DI_2028_2032_2037.pdf" download>Baixar PDF</a>
+    </div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="wrap">
+    <div class="kicker">Renda fixa · juros futuros</div>
+    <h1>O ajuste da curva DI</h1>
+    <p class="lede">Vértices jan/2028, jan/2032 e jan/2037 entre 06/10 e 27/10/2026 — pós 1º e 2º turno — com o mesmo olhar sobre a pandemia (2020) e o caso Americanas (jan/2023).</p>
+    <div class="kpis">
+      <div class="kpi">
+        <div class="lab">DI jan/2028</div>
+        <div class="val">12,61% → 14,38%</div>
+        <div class="dlt">+177 bps</div>
+      </div>
+      <div class="kpi">
+        <div class="lab">DI jan/2032</div>
+        <div class="val">12,65% → 14,94%</div>
+        <div class="dlt">+229 bps</div>
+      </div>
+      <div class="kpi">
+        <div class="lab">DI jan/2037</div>
+        <div class="val">12,75% → 14,81%</div>
+        <div class="dlt">+206 bps</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    <div class="kicker">O que aconteceu</div>
+    <h2>Três eventos mudaram o regime de preços</h2>
+    <p class="sub">1º turno (04/10), 2º turno (25/10) e Copom (04/11). O ajuste da curva não foi gradual: ele se concentrou nos pregões seguintes a cada evento.</p>
+    <div class="grid2">
+      <div class="note">
+        <p><b>1º turno — 04/10.</b> O mercado retirou prêmio de risco: Ibovespa na casa dos 200 mil pontos (InfoMoney, 05/10) e curva DI de −90 a −140 bps em 05–06/10.</p>
+        <p><b>2º turno — 25/10, Lula reeleito (TSE, 26/10).</b> Reversão violenta: Ibovespa −13% com circuit breaker e dólar +8% em 26/10; a curva abriu +196 a +260 bps em um único pregão.</p>
+        <p><b>27/10.</b> Com intervenção do Tesouro, os juros futuros recuaram do pico — mas ficaram 180–230 bps acima do nível de 06/10.</p>
+      </div>
+      <div class="note">
+        <p><b>Copom — 04/11.</b> Selic mantida em 13,75% a.a., decisão tratada como surpresa.</p>
+        <p><b>Focus — 06/11.</b> IPCA 5,22% (2026) e 4,90% (2027); Selic 13,75% e 12,50%; PIB 1,75% e 1,15%.</p>
+        <p><b>Itaú BBA — 30/10.</b> PIB 2027 cortado de 1,2% para 0,5%; IPCA 2027 de 4,6% para 6,1%; Selic a 13,75% durante todo o 2027.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="kicker">A curva inteira</div>
+    <h2>Ela se desloca em bloco, não em um ponto</h2>
+    <p class="sub">Em 06/10 a curva operava entre 12,5% e 12,9%, com o trecho curto invertido (2027 a 13,43% contra 2028 a 12,61%): o mercado precificava corte. Em 27/10 sobe ~2 pontos e ganha inclinação até 2032.</p>
+    <figure>
+      <img src="assets/chart_curva.png" alt="Curva DI em 02/10, 06/10 e 27/10/2026">
+      <figcaption>Taxas de fechamento por vencimento (jan) em 02/10, 06/10 e 27/10/2026.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="kicker">Os três vértices</div>
+    <h2>O miolo concentrou a reprecificação</h2>
+    <p class="sub">O vértice de 2032 é o que melhor mede o prêmio de risco fiscal: não responde à Selic de hoje, e sim à expectativa de juros e inflação no médio prazo. Foi ele que mais subiu.</p>
+    <div class="grid2">
+      <figure>
+        <img src="assets/chart_vertices.png" alt="Variação dos vértices 2028, 2032 e 2037">
+      </figure>
+      <div>
+        <table>
+          <thead><tr><th>Vértice</th><th>06/10</th><th>27/10</th><th>Δ</th></tr></thead>
+          <tbody>
+            <tr><td>jan/2028</td><td>12,61%</td><td>14,38%</td><td class="neg">+177 bps</td></tr>
+            <tr><td>jan/2032</td><td>12,65%</td><td>14,94%</td><td class="neg">+229 bps</td></tr>
+            <tr><td>jan/2037</td><td>12,75%</td><td>14,81%</td><td class="neg">+206 bps</td></tr>
+            <tr><td>Selic meta</td><td>13,75%</td><td>13,75%</td><td>0 bps</td></tr>
+          </tbody>
+        </table>
+        <p class="sub" style="margin-top:18px">Em 26/10, primeiro pregão após a confirmação da reeleição, o DI 2028 saltou de 12,86% (23/10) para 14,82% — +196 bps em um dia.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="kicker">A trajetória</div>
+    <h2>O ajuste aconteceu em um pregão</h2>
+    <p class="sub">Fechamentos diários dos três vértices, 25/09 a 09/11/2026. Pico em 03/11 (14,63% / 15,48% / 15,42%) e devolução parcial até 09/11 (14,22% / 14,95% / 14,94%).</p>
+    <figure>
+      <img src="assets/chart_caminho.png" alt="Trajetória diária dos vértices em setembro e outubro de 2026">
+    </figure>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="kicker">Dois precedentes</div>
+    <h2>Pandemia (2020) e Americanas (2023)</h2>
+    <p class="sub">Em 2020 a curva se ajustou por dentro: o curto cedeu com a Selic e o longo abriu. Em 2023, um choque de crédito moveu a curva em dois tempos — caiu com o fato relevante e subiu com o pedido de recuperação judicial.</p>
+    <div class="grid2">
+      <figure>
+        <img src="assets/chart_2020.png" alt="Curva DI em 2020: pré-pandemia, estresse e fim do ano">
+        <figcaption>2 anos: 5,26% → 2,86% (−240 bps). 11 anos: 7,10% → 7,20%. No pico do pânico (18/03), o longo abriu +221 bps em seis semanas.</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/chart_2023.png" alt="Curva DI em janeiro de 2023, caso Americanas">
+        <figcaption>10/01 → 12/01: −29 / −39 / −37 bps. 12/01 → 20/01: +37 / +76 / +80 bps. Mês fechado: +11 / +35 / +44 bps.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="kicker">Mesmo prazo, três regimes</div>
+    <h2>A forma engana; o nível explica</h2>
+    <p class="sub">2, 6 e 11 anos em 30/12/2020, 31/01/2023 e 27/10/2026. Em 2020 a curva era empinada (4,3 pontos entre 2 e 11 anos); em 2023 e 2026 ela é plana (0,2 e 0,4 ponto) — mas ~13% com prêmio baixo contra ~14,8% com prêmio fiscal.</p>
+    <figure>
+      <img src="assets/chart_prazo.png" alt="Comparação de prazos equivalentes em três regimes">
+    </figure>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="kicker">O vértice atravessa os regimes</div>
+    <h2>Mesmo contrato, regimes distintos</h2>
+    <p class="sub">O DI jan/2028 já operou a 6,8% (2020), 12,1% (jan/2023), 13,5% (set/2026) e 14,8% (26/10/2026).</p>
+    <figure>
+      <img src="assets/chart_longo.png" alt="Série histórica do DI jan/2028 de 2019 a 2026">
+    </figure>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="kicker">Leitura final</div>
+    <h2>A curva se ajusta — e o ajuste tem endereço</h2>
+    <p class="sub">Cinco conclusões verificáveis nos dados de 2020, de 2023 e de 2026.</p>
+    <ul class="concl">
+      <li>Ajuste rápido no choque: em 26/10/2026 foram <b>+196 bps em um dia</b>; em 2020 o movimento levou meses.</li>
+      <li>Prêmio migra de ponta: 2020 no longo; 2026 em toda a curva; jan/2023 abriu <b>+80 bps no longo em oito dias</b> e devolveu.</li>
+      <li>Idiossincrático × sistêmico: Americanas ~40 bps e volta; eleição ~200 bps e sustenta o nível.</li>
+      <li>Nível, não forma: 2023 e 2026 têm curva plana — <b>13% com prêmio baixo</b> contra <b>14,8% com prêmio fiscal</b>.</li>
+      <li>O DI 2028 já operou 6,8% (2020), 12,1% (jan/2023), 13,5% (set/2026) e 14,8% (26/10/2026).</li>
+    </ul>
+  </div>
+</section>
+
+<section style="border-bottom:none">
+  <div class="wrap">
+    <div class="kicker">Documento completo</div>
+    <h2>Baixe o material</h2>
+    <p class="sub">Mesmo conteúdo nos dois formatos: o PDF é a versão de leitura, o PPTX é o editável (9 páginas/slides).</p>
+    <div class="dl">
+      <a class="btn" href="Curva_DI_2028_2032_2037.pdf" download>PDF · 9 páginas</a>
+      <a class="btn ghost" href="Curva_DI_2028_2032_2037.pptx" download>PowerPoint · 9 slides</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p><b>Fontes:</b> B3 / TradingView (DI1, fechamento diário); BCB (Copom, Focus); TSE; InfoMoney; Valor; ADVFN; CNN Brasil e Poder360 (11/01/2023).</p>
+    <p><b>Metodologia:</b> taxas de fechamento dos contratos DI1 da B3. Para 2020 usaram-se os vértices então listados (até jan/2031); o 2032 existe desde 02/02/2022 e o 2037 desde 22/10/2021 — antes disso os contratos não existiam, por isso a comparação por prazo equivalente (2/6/11 anos).</p>
+    <p>Dados de fechamento: 09/11/2026 · Documento analítico, sem recomendação de investimento · <b>Simone Reis</b></p>
+  </div>
+</footer>
+
+</body>
+</html>
