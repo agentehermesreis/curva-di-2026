@@ -3,7 +3,7 @@
 Landing page do relatório: como a curva de juros DI se ajustou entre 06/10 e 27/10/2026
 (pós 1º e 2º turno), com os precedentes da pandemia (2020) e do caso Americanas (jan/2023).
 
-- **Site:** https://agentehermesreis.github.io/curva-di-2026/
+- **Site:** https://simone.rreis.app/
 - **PDF:** `Curva_DI_2028_2032_2037.pdf`
 - **PowerPoint:** `Curva_DI_2028_2032_2037.pptx`
 
