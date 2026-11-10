@@ -1,0 +1,2410 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Calculadora Financeira Simone Reis — réplica RPN</title>
+<style>
+  :root {
+    --body-1: #3a342e;
+    --body-2: #2b2723;
+    --body-3: #211e1b;
+    --bezel: #171513;
+    --lcd-bg: #b8c3ae;
+    --lcd-ink: #1e2b23;
+    --key-num: #e9e3d3;
+    --key-num-edge: #c9c1ad;
+    --key-fn: #3b3733;
+    --key-fn-edge: #55504a;
+    --key-arith: #4c4740;
+    --ink-num: #241f1a;
+    --ink-fn: #ded7c7;
+    --gold: #c9a227;
+    --blue: #3f7fbf;
+    --enter: #1f3d63;
+    --radius: 9px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    min-height: 100%;
+    background: radial-gradient(120% 90% at 50% 0%, #4a423a 0%, #241f1c 55%, #151311 100%);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink-fn);
+    display: grid;
+    place-items: center;
+    padding: 22px 14px 34px;
+  }
+
+  .device {
+    width: min(392px, 100%);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.25) 55%, rgba(0,0,0,.4)),
+      linear-gradient(90deg, var(--body-1), var(--body-2) 45%, var(--body-3));
+    border: 1px solid #0f0d0c;
+    border-radius: 16px;
+    padding: 16px 16px 18px;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.09) inset,
+      0 -1px 0 rgba(0,0,0,.6) inset,
+      0 26px 48px -18px rgba(0,0,0,.85),
+      0 6px 14px rgba(0,0,0,.45);
+  }
+
+  .brand {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 0 2px 9px;
+  }
+  .brand .model {
+    font-size: 15px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: #d9d1bf;
+    font-weight: 600;
+  }
+  .brand .model b { color: var(--gold); font-weight: 700; }
+  .brand .tag {
+    font-size: 9.5px;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: #8d867a;
+  }
+
+  .screen {
+    background: linear-gradient(180deg, #aab5a2, var(--lcd-bg) 40%, #9fab95);
+    border-radius: 7px;
+    padding: 8px 12px 9px;
+    border: 1px solid #0e0c0b;
+    box-shadow: 0 2px 6px rgba(0,0,0,.5) inset, 0 1px 0 rgba(255,255,255,.22);
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+
+  .indicators {
+    display: flex;
+    gap: 9px;
+    height: 11px;
+    align-items: center;
+    font-family: ui-monospace, "DejaVu Sans Mono", monospace;
+    font-size: 9px;
+    letter-spacing: .1em;
+    color: #57634f;
+    text-transform: uppercase;
+  }
+  .indicators span { opacity: .18; }
+  .indicators span.on { opacity: 1; color: #23331f; font-weight: 700; }
+
+  .lcd {
+    font-family: ui-monospace, "DejaVu Sans Mono", "Liberation Mono", monospace;
+    font-size: clamp(22px, 6.2vw, 29px);
+    line-height: 1.14;
+    letter-spacing: 0;
+    color: var(--lcd-ink);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    min-height: 34px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-shadow: 0 1px 0 rgba(255,255,255,.28);
+  }
+
+  .stack {
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
+    font-family: ui-monospace, monospace;
+    font-size: 8.6px;
+    color: #5b6750;
+    border-top: 1px solid rgba(30,43,35,.16);
+    margin-top: 4px;
+    padding-top: 3px;
+    letter-spacing: 0;
+  }
+  .stack b { color: #33422b; font-weight: 700; }
+
+  .hint {
+    min-height: 15px;
+    font-size: 10.5px;
+    color: #9b9285;
+    letter-spacing: .02em;
+    padding: 0 2px 8px;
+    text-align: center;
+  }
+  .hint.warn { color: var(--gold); }
+  .hint:empty { display: none; }   /* sem mensagem, a linha não ocupa espaço */
+
+  .pad {
+    display: grid;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .key {
+    position: relative;
+    border: 1px solid var(--key-fn-edge);
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, #4a4640, var(--key-fn) 55%, #302c29);
+    color: var(--ink-fn);
+    font: 600 11.5px/1 system-ui, sans-serif;
+    padding: 22px 2px 6px;
+    min-height: 46px;
+    cursor: pointer;
+    box-shadow: 0 2px 0 #14110f, 0 3px 5px rgba(0,0,0,.4), 0 1px 0 rgba(255,255,255,.1) inset;
+    transition: transform .05s ease, box-shadow .05s ease, filter .12s ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .key.num {
+    background: linear-gradient(180deg, #f2ecdc, var(--key-num) 55%, var(--key-num-edge));
+    color: var(--ink-num);
+    border-color: #a89f8b;
+    box-shadow: 0 2px 0 #16130f, 0 3px 6px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.75) inset;
+  }
+  .key.arith {
+    background: linear-gradient(180deg, #5a544b, var(--key-arith) 55%, #3a352f);
+  }
+  .key.enter {
+    background: linear-gradient(180deg, #2f5c8f, var(--enter) 55%, #16294a);
+    color: #f0e9d8;
+    font-size: 8.5px;
+    letter-spacing: 0;
+  }
+  .key.prefix-f {
+    background: linear-gradient(180deg, #e8cd63, var(--gold) 55%, #8f7118);
+    color: #241f13;
+    border-color: #7d6213;
+    font-weight: 800;
+    box-shadow: 0 2px 0 #5c4709, 0 3px 6px rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.45) inset;
+  }
+  .key.prefix-g {
+    background: linear-gradient(180deg, #66a3dc, var(--blue) 55%, #1f4f7f);
+    color: #f4f8fc;
+    border-color: #1b436b;
+    font-weight: 800;
+    box-shadow: 0 2px 0 #123354, 0 3px 6px rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.3) inset;
+  }
+  .key.prefix-f,
+  .key.prefix-g { font-size: 14px; }
+
+  .key.posicionada { height: 100%; }
+
+  .key:active, .key.pressed {
+    transform: translateY(2px);
+    box-shadow: 0 0 0 #14110f, 0 1px 2px rgba(0,0,0,.5), 0 1px 0 rgba(255,255,255,.08) inset;
+  }
+  .key:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+
+  .key .shift {
+    position: static;
+    flex: 0 0 auto;
+    width: 100%;
+    text-align: center;
+    font-size: 6.4px;
+    font-weight: 700;
+    letter-spacing: 0;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: visible;
+  }
+  .key .shift.f { color: var(--gold); }
+  .key .shift.g { color: var(--blue); }
+
+  .key {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .key .cap { display: block; margin: 0; min-width: 0; overflow: hidden; }
+
+  /* teclas sem rótulo de prefixo: centraliza o rótulo principal */
+  .key.plain {
+    padding-top: 6px;
+    padding-bottom: 6px;
+    justify-content: center;
+  }
+
+  .footnote {
+    margin-top: 12px;
+    font-size: 9.5px;
+    line-height: 1.5;
+    color: #7f776a;
+    text-align: center;
+    letter-spacing: .01em;
+  }
+
+  /* painel de fluxos de caixa e amortização */
+  .acoes-rodape {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .painel-toggle.destaque {
+    color: #241f13;
+    background: linear-gradient(180deg, #e8cd63, var(--gold) 55%, #8f7118);
+    border-color: #7d6213;
+  }
+  .painel-toggle.destaque:hover { color: #1a160c; }
+  .painel-toggle {
+    width: 100%;
+    margin-top: 0;
+    min-height: 44px;
+    font: 700 10px/1.15 system-ui, sans-serif;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: #b3a999;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 10px;
+    padding: 10px 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .painel-toggle:hover { color: #ded7c7; }
+  .painel-toggle:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  .panel {
+    margin-top: 9px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 8px;
+    padding: 10px;
+    background: rgba(0,0,0,.18);
+  }
+  .painel-topo {
+    position: sticky;          /* com a fonte maior o painel rola: FECHAR continua à mão */
+    top: 0;
+    z-index: 2;
+    background: #2f2b27;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255,255,255,.1);
+    font: 700 9px/1 system-ui, sans-serif;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: #a79d8d;
+  }
+  .painel-topo button {
+    font: 700 9px/1 system-ui, sans-serif;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid #55504a;
+    background: linear-gradient(180deg, #4a4640, #37332f);
+    color: #ded7c7;
+    cursor: pointer;
+  }
+  .panel h3 {
+    margin: 0 0 6px;
+    font: 700 9px/1 system-ui, sans-serif;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: #a79d8d;
+  }
+  .panel .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .cf-list {
+    font-family: ui-monospace, monospace;
+    font-size: 9.5px;
+    color: #cfc8b8;
+    max-height: 92px;
+    overflow: auto;
+  }
+  .cf-list .linha {
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 1.5px 0;
+    border-bottom: 1px dotted rgba(255,255,255,.07);
+  }
+  .cf-list .linha span:last-child { color: #a79d8d; }
+  .cf-list .vazio { color: #6f675b; font-style: italic; }
+  .cf-resultado {
+    margin-top: 7px;
+    font-family: ui-monospace, monospace;
+    font-size: 9.5px;
+    line-height: 1.6;
+    color: #cfc8b8;
+  }
+  .cf-resultado .res { display: flex; justify-content: space-between; gap: 8px; }
+  .cf-resultado .res b { color: #e8d98a; font-weight: 700; }
+  .cf-resultado .res.vazio b { color: #6f675b; font-weight: 400; }
+  .cf-resultado .res-taxa { color: #a79d8d; }
+  .panel .acoes { display: flex; gap: 6px; margin-top: 7px; flex-wrap: wrap; }
+  .panel button {
+    font: 700 8.5px/1 system-ui, sans-serif;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    padding: 6px 9px;
+    border-radius: 6px;
+    border: 1px solid #55504a;
+    background: linear-gradient(180deg, #4a4640, #37332f);
+    color: #ded7c7;
+    cursor: pointer;
+  }
+  .panel button:active { transform: translateY(1px); }
+  .panel button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .resumo-fin {
+    font-family: ui-monospace, monospace;
+    font-size: 9px;
+    color: #a79d8d;
+    line-height: 1.6;
+  }
+  .tabela-wrap { max-height: 168px; overflow: auto; margin-top: 8px; }
+  table.amat {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: ui-monospace, monospace;
+    font-size: 9px;
+    color: #cfc8b8;
+    font-variant-numeric: tabular-nums;
+  }
+  table.amat th {
+    position: sticky;
+    top: 0;
+    background: #262220;
+    color: #8d867a;
+    font-weight: 700;
+    text-align: right;
+    padding: 3px;
+    letter-spacing: .04em;
+  }
+  table.amat td { text-align: right; padding: 2.5px 3px; border-bottom: 1px solid rgba(255,255,255,.05); }
+  table.amat th:first-child, table.amat td:first-child { text-align: left; }
+  .footnote code {
+    font-family: ui-monospace, monospace;
+    color: #a79d8d;
+    background: rgba(255,255,255,.05);
+    padding: 0 3px;
+    border-radius: 3px;
+  }
+
+  
+
+  /* ---------- celular: ocupa a tela toda e estica o teclado ---------- */
+  
+
+  /* ---------- celular deitado: proporção do aparelho original ---------- */
+  
+
+  @media (prefers-reduced-motion: reduce) {
+    .key { transition: none; }
+  }
+
+  /* ================= layout fluido (celular, tablet e desktop) =================
+     Regras de folha única, sem pontos de quebra em px: o número de colunas do
+     teclado é decidido por JS (10 quando há largura, 5 em tela estreita) e todo
+     o dimensionamento usa %, dvh/dvw, vmin e clamp().                              */
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #211e1b;
+    display: block;
+    place-items: stretch;
+    width: 100%;
+  }
+  body { display: block; }
+
+  .device {
+    --lcd-fs: clamp(28px, 6.6vmin, 104px);
+    width: 100%;
+    max-width: none;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: clamp(5px, 1.2vmin, 22px);
+    gap: clamp(4px, 0.9vmin, 16px);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .brand { flex: 0 0 auto; padding: 0 clamp(2px, 0.4vmin, 8px) 2px; }
+  .brand .model { font-size: clamp(11px, 1.15vmin, 20px); }
+  .brand .tag { font-size: clamp(7px, 0.8vmin, 13px); }
+
+  /* visor: absorve a sobra, com teto para não engolir a tela */
+  .screen {
+    flex: 1 1 auto;
+    height: auto;
+    max-height: 30vh;
+    max-height: 30dvh;
+    min-height: clamp(68px, 10dvh, 170px);
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 2px;
+    padding: clamp(5px, 0.9vmin, 16px) clamp(8px, 1.4vmin, 24px);
+  }
+  /* indicadores e pilha acompanham o visor: 80% da linha central */
+  .indicators {
+    font-size: calc(var(--lcd-fs) * 0.5);   /* indicadores = 50% da linha central */
+    height: auto;
+    min-height: 0;
+    line-height: 1.15;
+    gap: clamp(3px, 0.3em, 9px);
+    letter-spacing: .04em;
+    flex: 0 0 auto;
+  }
+  .lcd {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    font-size: var(--lcd-fs);
+    min-height: calc(var(--lcd-fs) * 1.15);
+    line-height: 1;
+    padding-right: 2px;
+  }
+  .stack {
+    font-size: calc(var(--lcd-fs) * 0.5);   /* pilha T/Z/Y/X = 50% da linha central */
+    line-height: 1.2;
+    flex: 0 0 auto;
+    padding-top: clamp(2px, 0.4vmin, 8px);
+  }
+
+  .hint {
+    flex: 0 0 auto;
+    font-size: calc(var(--lcd-fs) * 0.5);
+    padding: 0 clamp(2px, 0.4vmin, 8px);
+    min-height: 0;
+  }
+
+  /* teclado: linhas esticam até um teto (nunca viram pílula) */
+  .pad {
+    flex: 1 1 auto;
+    min-height: 0;
+    grid-auto-rows: minmax(0, 1fr);
+    gap: clamp(4px, 0.7vmin, 10px);
+    max-height: calc(var(--linhas, 4) * clamp(44px, 11vmin, 112px));
+  }
+  .key {
+    --key-fs: clamp(12px, 2.05vmin, 28px);   /* base das teclas (~+18%) */
+    --cap-fs: calc(var(--key-fs) * 1.12);    /* label principal ~12% acima da base */
+    --shift-fs: calc(var(--cap-fs) * 0.8);   /* labels f/g = 80% da principal */
+    min-height: 0;
+    height: 100%;
+    font-size: var(--key-fs);
+    padding: clamp(3px, 0.6vmin, 9px) 1px clamp(3px, 0.6vmin, 9px);
+  }
+  .key .cap { font-size: var(--cap-fs); }
+  .key.longa { font-size: calc(var(--key-fs) * 0.92); }
+  .key.longa .cap { font-size: calc(var(--cap-fs) * 0.92); }
+  .key .shift { font-size: var(--shift-fs); overflow: visible; }
+  /* expoentes em <sup>: mesma fonte do resto da tecla, só menores e elevados */
+  .key sup {
+    font-family: inherit;
+    font-size: .62em;
+    line-height: 0;
+    vertical-align: .42em;
+    font-weight: inherit;
+  }
+  .key.enter { font-size: calc(var(--key-fs) * 0.85); letter-spacing: .03em; }
+  .key.enter .cap { font-size: calc(var(--key-fs) * 0.85); }
+  .key.prefix-f, .key.prefix-g { font-size: clamp(14px, 2.3vmin, 31px); padding-top: clamp(6px, 1.1vmin, 14px); }
+  .key.prefix-f .cap, .key.prefix-g .cap { font-size: clamp(14px, 2.3vmin, 31px); }
+
+  /* painel: bloco de datas */
+  .datas-campos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(4px, 0.8vmin, 10px);
+    align-items: flex-end;
+    margin-bottom: 6px;
+  }
+  .datas-campos label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: clamp(7px, 0.85vmin, 12px);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #b8b0a2;
+  }
+  .datas-campos input[type="date"] {
+    font: inherit;
+    font-size: clamp(9px, 1.05vmin, 15px);
+    padding: 3px 5px;
+    border-radius: 5px;
+    border: 1px solid #55504a;
+    background: #26221f;
+    color: #f0e9d8;
+    color-scheme: dark;
+  }
+  .datas-campos button {
+    font: inherit;
+    font-size: clamp(8px, 1vmin, 14px);
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: 1px solid #7d6213;
+    background: var(--gold);
+    color: #241f13;
+    font-weight: 800;
+    letter-spacing: .04em;
+    cursor: pointer;
+  }
+  .datas-campos button:active { transform: translateY(1px); }
+  .datas-resultado .res { display: flex; justify-content: space-between; gap: 8px; }
+  .datas-resultado .res b { font-variant-numeric: tabular-nums; }
+  .datas-resultado .destaque b { color: var(--gold); }
+  .datas-resultado .feriados-lista { margin-top: 4px; color: #9b9285; line-height: 1.45; }
+
+  .acoes-rodape { flex: 0 0 auto; margin: 0; gap: clamp(5px, 0.9vmin, 14px); }
+  .painel-toggle {
+    min-height: clamp(36px, 5.4dvh, 62px);
+    font-size: clamp(9px, 1.15vmin, 16px);
+    letter-spacing: .08em;
+    padding: 0 clamp(4px, 0.8vmin, 14px);
+  }
+  .panel {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    max-height: 78vh;
+    max-height: 78dvh;
+    overflow-y: auto;
+    border-radius: clamp(10px, 1.5vmin, 20px) clamp(10px, 1.5vmin, 20px) 0 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    background: #2f2b27;
+    box-shadow: 0 -10px 28px rgba(0,0,0,.55);
+    z-index: 30;
+    padding: clamp(8px, 1.4vmin, 22px) clamp(10px, 1.6vmin, 26px) calc(clamp(8px, 1.4vmin, 22px) + env(safe-area-inset-bottom));
+  }
+  /* escala única do painel — ~35% maior que a versão anterior */
+  .panel { --panel-fs: clamp(12px, calc(1.55vmin + 4px), 22px); }
+  .panel h3 { font-size: calc(var(--panel-fs) * 1.05); }
+  .painel-topo, .painel-topo button { font-size: calc(var(--panel-fs) * 0.95); }
+  .cf-list, .resumo-fin { font-size: var(--panel-fs); }
+  .panel button { font-size: calc(var(--panel-fs) * 0.95); }
+  table.amat { font-size: calc(var(--panel-fs) * 0.95); }
+  .datas-campos label { font-size: calc(var(--panel-fs) * 0.8); }
+  .datas-campos input[type="date"], .datas-campos button { font-size: calc(var(--panel-fs) * 0.95); }
+  .footnote { font-size: calc(var(--panel-fs) * 0.82); margin: clamp(4px, 0.8vmin, 12px) 0 0; }
+
+  /* telas muito baixas (celular deitado): esconde o que não é essencial */
+  /* telas muito baixas (celular pequeno deitado): mantém as proporções, reduz a escala */
+  @media (max-height: 400px) {
+    .device { --lcd-fs: clamp(20px, 7.6vmin, 40px); }
+    .key { --key-fs: clamp(10px, 1.85vmin, 20px); }
+  }
+
+  @media (max-height: 470px) {
+    .device { --lcd-fs: clamp(24px, 8.5vmin, 52px); }
+    .screen { max-height: 34dvh; min-height: clamp(74px, 27dvh, 118px); flex: 0 0 auto; }
+    .brand .tag { display: none; }
+    .hint { display: none; }
+    .footnote { display: none; }
+    .lcd { font-size: var(--lcd-fs); }
+    .key { padding: 2px 1px; }
+  }
+
+</style>
+</head>
+<body>
+  <main class="device" aria-label="Calculadora financeira Simone Reis, réplica funcional">
+    <div class="brand">
+      <span class="model">Financial <b>Simone Reis</b></span>
+      <span class="tag">réplica RPN</span>
+    </div>
+
+    <section class="screen" aria-live="polite">
+      <div class="indicators">
+        <span id="ind-f">f</span>
+        <span id="ind-g">g</span>
+        <span id="ind-rpn" class="on">rpn</span>
+        <span id="ind-sto">sto</span>
+        <span id="ind-beg">beg</span>
+        <span id="ind-dec">2</span>
+      </div>
+      <div class="lcd" id="lcd">0,00</div>
+      <div class="stack">
+        <span>T <b id="s-T">0,00</b></span>
+        <span>Z <b id="s-Z">0,00</b></span>
+        <span>Y <b id="s-Y">0,00</b></span>
+        <span>X <b id="s-X">0,00</b></span>
+      </div>
+    </section>
+
+    <div class="hint" id="hint"></div>
+
+    <div class="pad" id="pad" role="group" aria-label="Teclado"></div>
+
+    <div class="acoes-rodape">
+      <button class="painel-toggle" id="toggle-datas" type="button" aria-expanded="false" aria-controls="folha-datas" aria-label="Datas">
+        datas
+      </button>
+      <button class="painel-toggle" id="toggle-painel" type="button" aria-expanded="false" aria-controls="painel">
+        painel
+      </button>
+      <button class="painel-toggle destaque" id="btn-exportar-pdf" type="button">pdf</button>
+      <button class="painel-toggle" id="btn-exportar" type="button">csv</button>
+    </div>
+
+    <section class="panel" id="painel" hidden>
+      <div class="painel-topo">
+        <span>Painel</span>
+        <button type="button" id="btn-fechar-painel" aria-label="Fechar painel">fechar ✕</button>
+      </div>
+      <div class="grid2">
+        <div>
+          <h3>Fluxos de caixa</h3>
+          <div class="cf-list" id="cf-list"></div>
+          <div class="acoes">
+            <button type="button" id="btn-npv">NPV</button>
+            <button type="button" id="btn-irr">IRR</button>
+          </div>
+          <div class="cf-resultado" id="cf-resultado"></div>
+        </div>
+        <div>
+          <h3>Amortização</h3>
+          <div class="resumo-fin" id="amort-resumo"></div>
+          <div class="acoes">
+            <button type="button" id="btn-tabela">gerar tabela</button>
+          </div>
+        </div>
+      </div>
+      <div class="tabela-wrap" id="tabela-wrap" hidden>
+        <table class="amat" id="tabela-amort"></table>
+      </div>
+    <p class="footnote">
+      Teclas: <code>0-9</code> <code>.</code> <code>+ - * /</code> <code>Enter</code> <code>Backspace</code> (CLx)
+      <code>f</code> <code>g</code> · <code>Σ+</code> abre o painel · <strong><code>f CLx</code> limpa a memória</strong> (pilha, TVM, fluxos, amortização e registradores).<br>
+      Implementado: RPN, TVM (n/i/PV/PMT/FV), %, Δ%, %T, CF0/CFj/Nj, NPV, IRR, AMORT, INT, RND, ΔDYS (g %T) e funções matemáticas.
+      Datas: botão DATAS no rodapé (dias corridos, dias úteis com feriados, dia da semana) e ΔDYS por g %T.<br>
+      Não implementado: estatística (Σ+ original), DATE (data a partir de dias) e programação.<br>
+      Exportação em PDF (A4) e CSV · sem vínculo com a HP; réplica independente para estudo de RPN e matemática financeira.
+    </p>
+    </section>
+
+    <section class="panel" id="folha-datas" hidden>
+      <div class="painel-topo">
+        <span>Datas</span>
+        <button type="button" id="btn-fechar-datas" aria-label="Fechar datas">fechar ✕</button>
+      </div>
+      <h3>Dias úteis, dia da semana e intervalo</h3>
+      <div class="datas-campos">
+        <label>de <input type="date" id="data-ini"></label>
+        <label>até <input type="date" id="data-fim"></label>
+        <button type="button" id="btn-datas">calcular</button>
+      </div>
+      <div class="resumo-fin datas-resultado" id="datas-resultado"></div>
+      <p class="footnote">
+        Dias úteis contam de início+1 até o fim, descontando sábados, domingos e feriados nacionais
+        (fixos e móveis da Páscoa). Para dias corridos pela pilha use <code>g %T</code> (ΔDYS).
+      </p>
+    </section>
+
+
+  </main>
+
+<script>
+(function (root) {
+  "use strict";
+
+  const D = 10; // dígitos significativos internos (a 12C trabalha com 10)
+
+  function r10(x) {
+    if (!isFinite(x) || x === 0) return x;
+    const e = Math.floor(Math.log10(Math.abs(x)));
+    const fator = Math.pow(10, D - 1 - e);
+    return Math.round(x * fator) / fator;
+  }
+
+  function makeCalc() {
+    const st = {
+      X: 0, Y: 0, Z: 0, T: 0, LASTX: 0,
+      lift: true,           // próxima digitação empurra a pilha
+      entering: false,
+      entry: "",
+      exp: false,
+      prefix: null,
+      aguardaReg: null,
+      decimals: 2,
+      begin: false,          // BEG: pagamentos no início do período | END: no fim
+      financial: { n: 0, i: 0, pv: 0, pmt: 0, fv: 0 },
+      cash: { cf0: 0, flows: [] },     // fluxos de caixa: CF0 + CFj com Nj repetições
+      calculos: [],                    // cálculos realizados (formato dos exemplos do manual)
+      amort: [],                        // última tabela de amortização calculada
+      log: [],                          // registro de teclas para exportação
+      mem: {},
+      lastKey: "",
+      erro: null,
+      mensagem: "",
+    };
+
+    function levanta() { st.T = st.Z; st.Z = st.Y; st.Y = st.X; }
+
+    function valorEntrada() {
+      if (!st.entering) return st.X;
+      const s = st.entry;
+      if (s === "" || s === "-" || s === "." || s === "-." || s.endsWith("e") || s.endsWith("e-")) return 0;
+      const v = Number(s);
+      return isFinite(v) ? v : 0;
+    }
+
+    function fechaEntrada() {
+      if (st.entering) {
+        st.X = valorEntrada();
+        st.entering = false;
+        st.entry = "";
+        st.exp = false;
+      }
+    }
+
+    function iniciaEntrada() {
+      if (st.lift) levanta();
+      st.lift = false;
+      st.entering = true;
+      st.entry = "";
+      st.exp = false;
+    }
+
+    /* ---------- entrada numérica ---------- */
+    function digito(d) {
+      if (!st.entering) iniciaEntrada();
+      if (st.exp) {
+        const partes = st.entry.split("e");
+        if (partes.length === 2 && partes[1].replace("-", "").length >= 2) return;
+        st.entry += d;
+        st.X = valorEntrada();
+        return;
+      }
+      if (st.entry.replace("-", "").replace(".", "").length >= D) return;
+      st.entry += d;
+      st.X = valorEntrada();
+    }
+
+    function ponto() {
+      if (!st.entering) iniciaEntrada();
+      if (st.exp) return;
+      if (!st.entry.includes(".")) st.entry += st.entry === "" ? "0." : ".";
+      st.X = valorEntrada();
+    }
+
+    function eex() {
+      if (!st.entering) iniciaEntrada();
+      if (st.entry.includes("e")) return;
+      st.entry += (st.entry === "" || st.entry === "-") ? "1e" : "e";
+      st.exp = true;
+    }
+
+    function chs() {
+      if (st.entering) {
+        if (st.exp) {
+          const partes = st.entry.split("e");
+          const expo = partes[1] || "";
+          st.entry = partes[0] + "e" + (expo.startsWith("-") ? expo.slice(1) : "-" + expo);
+        } else {
+          st.entry = st.entry.startsWith("-") ? st.entry.slice(1) : "-" + st.entry;
+        }
+        st.X = valorEntrada();
+      } else {
+        st.X = -st.X;
+      }
+    }
+
+    function clx() {
+      st.X = 0; st.entering = false; st.entry = ""; st.exp = false; st.lift = false;
+    }
+
+    function enter() {
+      fechaEntrada();
+      levanta();          // Y recebe X (empurra) e X continua com o valor
+      st.lift = false;    // digitar depois de ENTER substitui X
+      st.entering = false; st.entry = ""; st.exp = false;
+    }
+
+    function trocaXY() {
+      fechaEntrada();
+      const t = st.X; st.X = st.Y; st.Y = t;
+      st.lift = true;
+    }
+
+    function rollDown() {
+      fechaEntrada();
+      const t = st.X; st.X = st.Y; st.Y = st.Z; st.Z = st.T; st.T = t;
+      st.lift = true;
+    }
+
+    /* ---------- aritmética ---------- */
+    /* Toda operação que muda o visor entra no relatório (PDF/CSV) como um cálculo
+       numerado: "Soma", "Multiplicação" etc. Antes, só pct/TVM/fluxos/amortização
+       eram registrados e o relatório de uma sessão comum saía vazio. */
+    function binaria(fn, titulo, simbolo) {
+      fechaEntrada();
+      const a = st.Y, b = st.X;
+      st.LASTX = b;
+      const r = r10(fn(a, b));
+      // comportamento HP: Y<-Z, Z<-T e T permanece (duplica). É o que permite
+      // operações encadeadas usando o valor mais antigo como constante.
+      st.X = r; st.Y = st.Z; st.Z = st.T;
+      st.lift = true;
+      if (!isFinite(r) || Number.isNaN(r)) { st.erro = "Error"; }
+      else if (titulo) {
+        registraCalculo(titulo, numSeq(a) + " ENTER " + numSeq(b) + " " + simbolo,
+          "= " + numSeq(r), "arit");
+      }
+      return r;
+    }
+
+    const ops = {
+      soma: () => binaria((a, b) => a + b, "Soma", "+"),
+      subt: () => binaria((a, b) => a - b, "Subtração", "-"),
+      mult: () => binaria((a, b) => a * b, "Multiplicação", "×"),
+      div: () => {
+        fechaEntrada();
+        if (st.X === 0) {
+          st.LASTX = st.X; st.erro = "Error 0"; st.mensagem = "Divisão por zero";
+          st.lift = true;
+          return null;
+        }
+        return binaria((a, b) => a / b, "Divisão", "÷");
+      },
+      yx: () => binaria((a, b) => Math.pow(a, b), "Potência", "y^x"),
+    };
+
+    /* ---------- g ΔDYS: dias corridos entre duas datas na pilha ----------
+       Entrada igual à HP-12C: MM.DDAAAA (ex.: 12,251999 = 25/12/1999).
+       Y = data inicial, X = data final; o resultado substitui X e a pilha desce. */
+    function dataDoVisor(v) {
+      const n = Math.round(Math.abs(v) * 1e6);          // 6 casas: MMDDAAAA
+      if (!isFinite(n) || n < 1010000 || n > 12319999) return null;
+      const s = String(n).padStart(8, "0");
+      const iso = s.slice(4, 8) + "-" + s.slice(0, 2) + "-" + s.slice(2, 4);
+      return parseData(iso) ? iso : null;
+    }
+
+    function deltaDias() {
+      fechaEntrada();
+      const isoY = dataDoVisor(st.Y), isoX = dataDoVisor(st.X);
+      if (!isoY) {
+        st.erro = "Error";
+        st.mensagem = "Data inicial (Y) inválida — use MM.DDAAAA, ex.: 12,251999";
+        st.lift = true;
+        return null;
+      }
+      if (!isoX) {
+        st.erro = "Error";
+        st.mensagem = "Data final (X) inválida — use MM.DDAAAA, ex.: 31,122026";
+        st.lift = true;
+        return null;
+      }
+      const dias = diasCorridos(isoY, isoX);            // X - Y
+      st.LASTX = st.X;
+      st.X = dias; st.Y = st.Z; st.Z = st.T;            // consome X e Y, como uma binária
+      st.lift = true;
+      st.mensagem = "ΔDYS " + isoY.split("-").reverse().join("/") + " → " +
+                    isoX.split("-").reverse().join("/") + " = " + dias + " dias";
+      registraCalculo("ΔDYS — dias corridos entre duas datas",
+        isoY.split("-").reverse().join("/") + " ENTER " +
+        isoX.split("-").reverse().join("/") + " g %T",
+        numSeq(dias) + " dias", "data");
+      return dias;
+    }
+
+    function unaria(fn, titulo, simbolo) {
+      fechaEntrada();
+      const x = st.X;
+      st.LASTX = x;
+      const r = r10(fn(x));
+      st.X = r;
+      st.lift = true;
+      if (!isFinite(r) || Number.isNaN(r)) st.erro = "Error";
+      else if (titulo) {
+        registraCalculo(titulo, numSeq(x) + " " + simbolo, "= " + numSeq(r), "arit");
+      }
+      return r;
+    }
+
+    const un = {
+      raiz: () => unaria((x) => Math.sqrt(x), "Raiz quadrada", "√x"),
+      quadrado: () => unaria((x) => x * x, "Quadrado", "x^2"),
+      inverso: () => unaria((x) => 1 / x, "Inverso", "1/x"),
+      ln: () => unaria((x) => Math.log(x), "Logaritmo natural", "ln"),
+      exp: () => unaria((x) => Math.exp(x), "Exponencial", "e^x"),
+      frac: () => unaria((x) => x - Math.trunc(x), "Parte fracionária", "FRAC"),
+      inteiro: () => unaria((x) => Math.trunc(x), "Parte inteira", "INTG"),
+      fat: () => {
+        fechaEntrada();
+        const x = st.X;
+        if (x < 0 || Math.abs(x - Math.round(x)) > 1e-9 || x > 170) {
+          st.erro = "Error"; st.mensagem = "x! exige inteiro entre 0 e 170"; return null;
+        }
+        let r = 1;
+        for (let k = 2; k <= Math.round(x); k++) r *= k;
+        return unaria(() => r, "Fatorial", "x!");
+      },
+    };
+
+    /* ---------- porcentagens ---------- */
+    function pct() {                       // % : X% de Y
+      fechaEntrada();
+      const base = st.Y, p = st.X;
+      st.LASTX = p;
+      st.X = r10(base * p / 100);
+      st.lift = true;
+      registraCalculo("% — porcentagem de um valor",
+        numSeq(base) + " ENTER " + numSeq(p) + " %", numSeq(st.X));
+      return st.X;
+    }
+    function deltaPct() {                  // Δ% : variação percentual de Y para X
+      fechaEntrada();
+      const antigo = st.Y, novo = st.X;
+      if (antigo === 0) { st.erro = "Error 0"; st.mensagem = "Δ% com base zero"; return null; }
+      st.LASTX = novo;
+      st.X = r10((novo - antigo) / antigo * 100);
+      st.lift = true;
+      registraCalculo("Δ% — variação percentual",
+        numSeq(antigo) + " ENTER " + numSeq(novo) + " Δ%", numeroCSV(st.X) + "%");
+      return st.X;
+    }
+    function pctT() {                      // %T : X como porcentagem do total Y
+      fechaEntrada();
+      const total = st.Y, parte = st.X;
+      if (total === 0) { st.erro = "Error 0"; st.mensagem = "%T com total zero"; return null; }
+      st.LASTX = parte;
+      st.X = r10(parte / total * 100);
+      st.lift = true;
+      registraCalculo("%T — participação no total",
+        numSeq(total) + " ENTER " + numSeq(parte) + " %T", numeroCSV(st.X) + "% do total");
+      return st.X;
+    }
+
+    /* ---------- TVM ---------- */
+    const f = st.financial;
+
+    function guardaTVM(reg) {
+      fechaEntrada();
+      if (reg === "i") f.i = st.X / 100;
+      else f[reg] = st.X;
+      st.lift = false;
+    }
+
+    /* Comportamento autêntico da 12C: a tecla financeira ARMAZENA quando há um
+       número recém-digitado e CALCULA quando não há (usa os outros quatro). */
+    function teclaFinanceira(reg) {
+      if (st.entering) return guardaTVM(reg);
+      return resolve(reg);
+    }
+
+    function rnd() {   // f PMT: arredonda X para as casas exibidas
+      fechaEntrada();
+      const casas = st.decimals;
+      const fator = Math.pow(10, casas);
+      st.X = Math.round(st.X * fator) / fator;
+      st.lift = true;
+      return st.X;
+    }
+
+    function mostraTVM(reg) {
+      fechaEntrada();
+      levanta();
+      st.X = reg === "i" ? f.i * 100 : f[reg];
+      st.lift = false;
+    }
+
+    /* Registra um cálculo como nos exemplos do manual: título, sequência e resultado. */
+    function registraCalculo(titulo, sequencia, resultado, tipo) {
+      while (st.calculos.length >= 40) st.calculos.shift();   // mantém no máximo 40
+      st.calculos.push({ titulo: titulo, sequencia: sequencia, resultado: resultado,
+                         tipo: tipo || "pct" });
+    }
+
+    function sequenciaTVM(chaveFinal) {
+      const nomes = { n: "n", i: "i", pv: "PV", pmt: "PMT", fv: "FV" };
+      const partes = [];
+      ["n", "i", "pv", "pmt", "fv"].forEach((k) => {
+        if (k === chaveFinal) return;
+        const v = k === "i" ? numSeq(f.i * 100) : numSeq(f[k]);
+        partes.push(v + " " + nomes[k]);
+      });
+      partes.push(nomes[chaveFinal]);
+      return partes.join(" \u00b7 ");
+    }
+
+    function sequenciaFluxos(sufixo) {
+      const lista = st.cash.flows
+        .map((x) => numSeq(x.v) + (x.nj > 1 ? "(x" + x.nj + ")" : ""))
+        .join(" + ");
+      const cfj = st.cash.flows.length ? "CFj " + lista + " g PMT" : "CFj (nenhum registrado)";
+      return "CF0 " + numSeq(st.cash.cf0) + " g PV \u00b7 " + cfj + " \u00b7 " +
+             numSeq(f.i * 100) + " i \u00b7 " + sufixo;
+    }
+
+    /* ---------- fluxos de caixa (CF0 / CFj / Nj), NPV e IRR ---------- */
+
+    function guardaCF0() {
+      fechaEntrada();
+      if (st.cash.flows.length) {
+        st.mensagem = "CF0 alterado: os " + st.cash.flows.length + " CFj anteriores foram apagados";
+      }
+      st.cash.cf0 = st.X;
+      st.cash.flows = [];
+      st.lift = false;
+    }
+
+    function guardaCFj() {
+      fechaEntrada();
+      st.cash.flows.push({ v: st.X, nj: 1 });
+      st.lift = false;
+    }
+
+    function guardaNj() {
+      fechaEntrada();
+      const ultimo = st.cash.flows[st.cash.flows.length - 1];
+      if (!ultimo) { st.mensagem = "Nj: informe um CFj antes"; return; }
+      const k = Math.max(1, Math.round(st.X));
+      ultimo.nj = k;
+      st.X = k;
+      st.lift = false;
+    }
+
+    function fluxosExpandidos() {
+      const lista = [];
+      for (const fl of st.cash.flows) {
+        const repeticoes = Math.max(1, Math.round(fl.nj || 1));
+        for (let k = 0; k < repeticoes; k++) lista.push(fl.v);
+      }
+      return lista;
+    }
+
+    function npvEm(taxa) {
+      const lista = fluxosExpandidos();
+      let total = st.cash.cf0;
+      for (let k = 0; k < lista.length; k++) total += lista[k] / Math.pow(1 + taxa, k + 1);
+      return total;
+    }
+
+    function calculaNPV() {
+      fechaEntrada();
+      const r = r10(npvEm(f.i));
+      levanta();
+      st.X = r;
+      st.lift = false;
+      registraCalculo("Fluxos de caixa — NPV (valor presente líquido)",
+        sequenciaFluxos("f PV"), "NPV = " + numeroCSV(r), "fluxo");
+      return r;
+    }
+
+    function calculaIRR() {
+      fechaEntrada();
+      if (!st.cash.flows.length) { st.mensagem = "IRR: informe CF0 e ao menos um CFj"; return null; }
+      let raiz = null, prevX = null, prevV = null;
+      for (let k = 0; k <= 1900 && raiz === null; k++) {
+        const x = -0.9 + k * 0.001;
+        const v = npvEm(x);
+        if (!isFinite(v)) { prevX = null; prevV = null; continue; }
+        if (prevX !== null && prevV * v <= 0) {
+          let lo = prevX, hi = x, flo = prevV;
+          for (let it = 0; it < 200; it++) {
+            const mid = (lo + hi) / 2;
+            const fm = npvEm(mid);
+            if (!isFinite(fm)) break;
+            if (Math.abs(fm) < 1e-12) { lo = hi = mid; break; }
+            if (flo * fm <= 0) hi = mid; else { lo = mid; flo = fm; }
+          }
+          raiz = (lo + hi) / 2;
+        }
+        prevX = x; prevV = v;
+      }
+      if (raiz === null) { st.erro = "Error"; st.mensagem = "IRR: sem solução"; return null; }
+      raiz = r10(raiz);
+      levanta();
+      st.X = raiz * 100;
+      st.lift = false;
+      registraCalculo("Fluxos de caixa — IRR (taxa interna de retorno)",
+        sequenciaFluxos("f FV"), "IRR = " + numeroCSV(raiz * 100) + "% ao período", "fluxo");
+      return raiz * 100;
+    }
+
+    /* ---------- amortização (f n = AMORT) e juros simples (f i = INT) ---------- */
+
+    function tabelaAmortizacao(ate) {
+      const { n, i, pv } = f;
+      const pagamento = Math.abs(f.pmt);
+      const linhas = [];
+      let saldo = pv;
+      const limite = Math.max(1, Math.min(ate || n || 1, n || ate || 1, 1200));
+      for (let k = 1; k <= limite; k++) {
+        const juros = r10(saldo * i);
+        const amortizacao = r10(pagamento - juros);
+        saldo = r10(saldo - amortizacao);
+        linhas.push({ parcela: k, juros, amortizacao, saldo });
+      }
+      st.amort = linhas;
+      return linhas;
+    }
+
+    function amortizar() {
+      fechaEntrada();
+      const k = Math.max(1, Math.round(st.X));
+      const linhas = tabelaAmortizacao(k);
+      const alvo = linhas[Math.min(k, linhas.length) - 1];
+      if (!alvo) { st.mensagem = "AMORT: defina n, i, PV e PMT"; return null; }
+      st.Y = alvo.amortizacao;
+      st.X = alvo.juros;
+      st.lift = false;
+      registraCalculo("Amortização — parcela " + alvo.parcela,
+        numSeq(f.n) + " n \u00b7 " + (f.i * 100).toFixed(4).replace(".", ",") + " i \u00b7 " +
+        numSeq(f.pv) + " PV \u00b7 " + numSeq(Math.abs(f.pmt)) + " CHS PMT \u00b7 " + alvo.parcela + " f n",
+        "juros " + numeroCSV(alvo.juros) + " \u00b7 amortização " + numeroCSV(alvo.amortizacao) +
+        " \u00b7 saldo " + numeroCSV(alvo.saldo), "amort");
+      st.mensagem = `AMORT parcela ${alvo.parcela}: juros em X, amortização em Y (x≷y troca)`;
+      return alvo.juros;
+    }
+
+    function intSimples() {
+      fechaEntrada();
+      const principal = f.pv, dias = f.n, taxaAnual = f.i;
+      const juros = r10(principal * taxaAnual * dias / 360);
+      levanta();
+      st.X = juros;
+      st.Y = r10(principal + juros);
+      st.lift = false;
+      registraCalculo("Juros simples (INT, base 360 dias)",
+        numSeq(principal) + " PV \u00b7 " + (taxaAnual * 100).toFixed(4).replace(".", ",") +
+        " i \u00b7 " + dias + " n \u00b7 f i",
+        "juros " + numeroCSV(juros) + " \u00b7 total " + numeroCSV(principal + juros), "tvm");
+      st.mensagem = "INT: juros simples em X (base 360 dias), principal + juros em Y";
+      return juros;
+    }
+
+    function vezes12() {
+      fechaEntrada();
+      const r = r10(st.X * 12);
+      registraCalculo("Multiplicação por 12 (g n)", numSeq(st.X) + " g n",
+        "= " + numSeq(r), "arit");
+      st.X = r; st.lift = true;
+      return r;
+    }
+
+    function dividir12() {
+      fechaEntrada();
+      const r = r10(st.X / 12);
+      registraCalculo("Divisão por 12 (g i)", numSeq(st.X) + " g i",
+        "= " + numSeq(r), "arit");
+      st.X = r; st.lift = true;
+      return r;
+    }
+
+    // fator de valor presente: (1 - (1+i)^-n) / i   |   fator de valor futuro: ((1+i)^n - 1) / i
+    const faPV = (i, n) => (i === 0 ? n : (1 - Math.pow(1 + i, -n)) / i);
+    const faFV = (i, n) => (i === 0 ? n : (Math.pow(1 + i, n) - 1) / i);
+
+    function resolve(reg) {
+      fechaEntrada();
+      const n = f.n, i = f.i, pv = f.pv, pmt = f.pmt, fv = f.fv;
+      let r = null;
+
+      const antecipa = st.begin ? (1 + i) : 1;   // BEG: cada PMT rende um período a mais
+
+      if (reg === "fv") {
+        r = -(pv * Math.pow(1 + i, n) + pmt * faFV(i, n) * antecipa);
+      } else if (reg === "pv") {
+        r = -(pmt * faPV(i, n) * antecipa + fv * Math.pow(1 + i, -n));
+      } else if (reg === "pmt") {
+        const k = faPV(i, n) * antecipa;
+        r = k === 0 ? null : -(pv + fv * Math.pow(1 + i, -n)) / k;
+      } else if (reg === "n") {
+        if (pmt === 0) {
+          if (pv === 0 || fv === 0 || pv * fv > 0) { st.erro = "Error"; st.mensagem = "n: sinais incoerentes"; return null; }
+          r = Math.log(-fv / pv) / Math.log(1 + i);
+        } else {
+          const m = antecipa;
+          const den = pmt * m + pv * i, num = pmt * m - fv * i;
+          if (den === 0 || num === 0 || num / den <= 0) { st.erro = "Error"; st.mensagem = "n: sem solução"; return null; }
+          r = Math.log(num / den) / Math.log(1 + i);
+        }
+      } else if (reg === "i") {
+        const g = (x) => pv + pmt * faPV(x, n) * (st.begin ? (1 + x) : 1) + fv * Math.pow(1 + x, -n);
+        // varre uma grade atrás de troca de sinal e depois bisecciona:
+        // os extremos (i→-1) estouram para infinito, então não serve como bracket fixo
+        let r_ = null, prevX = null, prevV = null;
+        for (let k = 0; k <= 1900 && r_ === null; k++) {
+          const x = -0.9 + k * 0.001;
+          const v = g(x);
+          if (!isFinite(v)) { prevX = null; prevV = null; continue; }
+          if (prevX !== null && prevV * v <= 0) {
+            let lo = prevX, hi = x, flo = prevV;
+            for (let it = 0; it < 200; it++) {
+              const mid = (lo + hi) / 2;
+              const fm = g(mid);
+              if (!isFinite(fm)) break;
+              if (Math.abs(fm) < 1e-14) { lo = hi = mid; break; }
+              if (flo * fm <= 0) hi = mid; else { lo = mid; flo = fm; }
+            }
+            r_ = (lo + hi) / 2;
+          }
+          prevX = x; prevV = v;
+        }
+        if (r_ === null) { st.erro = "Error"; st.mensagem = "i: sem solução no intervalo"; return null; }
+        r = r_;
+      }
+
+      if (r === null || !isFinite(r)) { st.erro = "Error"; return null; }
+      r = r10(r);
+      const nomes = { n: "n", i: "i", pv: "PV", pmt: "PMT", fv: "FV" };
+      const seq = sequenciaTVM(reg);
+      if (reg === "i") { f.i = r; levanta(); st.X = r * 100; }
+      else { f[reg] = r; levanta(); st.X = r; }
+      st.lift = false;
+      registraCalculo(
+        "TVM — " + nomes[reg] + " calculado" + (st.begin ? " (pagamentos no início, BEG)" : ""),
+        seq,
+        nomes[reg] + " = " + numeroCSV(reg === "i" ? r * 100 : r) + (reg === "i" ? "% ao período" : ""),
+        "tvm");
+      return r;
+    }
+
+    /* ---------- memória ---------- */
+    function sto(r) { fechaEntrada(); st.mem[r] = st.X; st.lift = false; }
+    function rcl(r) { fechaEntrada(); levanta(); st.X = st.mem[r] || 0; st.lift = false; }
+
+    /* ---------- formatação ---------- */
+    function agrupa(digitos) { return digitos.replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
+
+    function formataEntrada(entry) {
+      if (entry === "" || entry === "-") return entry === "-" ? "-" : "0";
+      const neg = entry.startsWith("-");
+      let corpo = neg ? entry.slice(1) : entry;
+      const [mant, expo] = corpo.split("e");
+      const [int, dec] = mant.split(".");
+      let s = agrupa(int || "0") + (dec !== undefined ? "," + dec : "");
+      if (expo !== undefined) s += " " + (expo === "" ? "00" : expo);
+      return (neg ? "-" : "") + s;
+    }
+
+    function formata(v) {
+      if (st.erro) return st.erro;
+      if (!isFinite(v)) return "Error";
+      const abs = Math.abs(v);
+      if (abs !== 0 && (abs >= 1e10 || abs < Math.pow(10, -st.decimals) / 2)) {
+        return v.toExponential(Math.min(9, st.decimals)).replace(".", ",").replace("e", " ").replace("+", "");
+      }
+      const s = v.toFixed(st.decimals);
+      const neg = s.startsWith("-");
+      const [int, dec] = (neg ? s.slice(1) : s).split(".");
+      return (neg ? "-" : "") + agrupa(int) + (dec ? "," + dec : "");
+    }
+
+    function display() {
+      if (st.erro) return st.erro;
+      return st.entering ? formataEntrada(st.entry) : formata(st.X);
+    }
+
+    /* ---------- teclado ---------- */
+    function limpaErro() { st.erro = null; st.mensagem = ""; }
+
+    function registrarTecla(k, antes, tinhaErro) {
+      if (k === "f" || k === "g") return;           // prefixos entram no rótulo da próxima tecla
+      if (st.log.length > 600) st.log.shift();
+      st.log.push({
+        passo: st.log.length + 1,
+        tecla: k,
+        antes: antes,
+        x: st.X,
+        visor: st.erro ? st.erro : display(),
+        erro: !!st.erro && !tinhaErro,
+      });
+    }
+
+    function tecla(k) {
+      const antes = st.X;
+      const tinhaErro = !!st.erro;
+      teclaInterna(k);
+      registrarTecla(k, antes, tinhaErro);
+    }
+
+    function teclaInterna(k) {
+      st.lastKey = k;
+
+      if (k === "f" || k === "g") {
+        st.prefix = st.prefix === k ? null : k;
+        return;
+      }
+
+      // erro pendente: qualquer tecla (menos CLx/ON) limpa o erro antes de agir
+      if (st.erro) limpaErro();
+
+      const pref = st.prefix;
+      st.prefix = null;
+
+      // registro após STO / RCL (aceita 0-9 e os registradores financeiros)
+      if (st.aguardaReg) {
+        const acao = st.aguardaReg;
+        st.aguardaReg = null;
+        if (/^[0-9.]$/.test(k)) {
+          acao === "sto" ? sto(k) : rcl(k);
+          return;
+        }
+        if (["n", "i", "pv", "pmt", "fv"].includes(k)) {
+          if (acao === "sto") guardaTVM(k); else mostraTVM(k);
+          return;
+        }
+        st.mensagem = "STO/RCL espera um registro 0-9 ou n/i/PV/PMT/FV";
+      }
+
+      if (k === "on") { st.aguardaReg = null; return clx(); }
+      if (k === "clx") {
+        st.aguardaReg = null;
+        if (pref === "f") return limparTudo();   // f CLx = CLEAR (limpa tudo)
+        return clx();
+      }
+      if (k === "sto" || k === "rcl") { st.aguardaReg = k; return; }
+
+      // dígitos (com prefixo f = casas decimais)
+      if (/^[0-9]$/.test(k)) {
+        // FIX (f + dígito) é comando de formatação: encerra a digitação e reexibe
+        // o número com as casas pedidas. Sem isso o visor continuava mostrando o
+        // que foi digitado e o próximo dígito emendava no mesmo número.
+        if (pref === "f") { fechaEntrada(); st.decimals = Number(k); st.lift = true; return; }
+        if (pref === "g" && k === "8") {          // g 8 = alterna BEG / END
+          st.begin = !st.begin;
+          st.lift = false;
+          st.mensagem = st.begin
+            ? "Modo BEG: pagamentos no início do período"
+            : "Modo END: pagamentos no fim do período";
+          return;
+        }
+        if (pref === "g" && k === "0") { fechaEntrada(); st.decimals = 0; st.lift = true; return; }   // g 0 = FIX 0
+        return digito(k);
+      }
+
+      switch (k) {
+        case ".": return ponto();
+        case "eex": return eex();
+        case "chs": return chs();
+        case "enter": return enter();
+        case "xy": return trocaXY();
+        case "rdn": return rollDown();
+        case "+": return ops.soma();
+        case "-": return ops.subt();
+        case "*": return ops.mult();
+        case "/": return ops.div();
+        case "%": return pct();
+        case "dpct": return deltaPct();
+        case "pctt":
+          if (pref === "g") return deltaDias();
+          return pctT();
+        case "n": case "i": case "pv": case "pmt": case "fv":
+          if (pref === "f") {
+            if (k === "n") return amortizar();
+            if (k === "i") return intSimples();
+            if (k === "pv") return calculaNPV();
+            if (k === "pmt") return rnd();
+            if (k === "fv") return calculaIRR();
+          }
+          if (pref === "g") {
+            if (k === "n") return vezes12();
+            if (k === "i") return dividir12();
+            if (k === "pv") return guardaCF0();
+            if (k === "pmt") return guardaCFj();
+            if (k === "fv") return guardaNj();
+          }
+          return teclaFinanceira(k);
+        case "yx":
+          if (pref === "f") return un.fat();
+          if (pref === "g") return un.raiz();
+          return ops.yx();
+        case "inv":
+          if (pref === "f") return un.frac();
+          if (pref === "g") return un.inteiro();
+          return un.inverso();
+        case "sqrt":
+          if (pref === "f") return un.exp();
+          if (pref === "g") return un.quadrado();
+          return un.raiz();
+        case "sq":
+          if (pref === "f") return un.ln();
+          if (pref === "g") return un.raiz();
+          return un.quadrado();
+        case "lastx":
+          fechaEntrada();
+          levanta();
+          st.X = st.LASTX;
+          st.lift = false;
+          return st.X;
+        default:
+          st.mensagem = `Tecla "${k}" não implementada`;
+      }
+    }
+
+    function estado() {
+      return {
+        X: st.X, Y: st.Y, Z: st.Z, T: st.T, LASTX: st.LASTX,
+        prefix: st.prefix, decimals: st.decimals, erro: st.erro, mensagem: st.mensagem,
+        begin: st.begin,
+        financial: Object.assign({}, st.financial), mem: Object.assign({}, st.mem),
+        cash: { cf0: st.cash.cf0, flows: st.cash.flows.map((x) => ({ v: x.v, nj: x.nj })) },
+        amort: st.amort.slice(),
+        calculos: st.calculos.slice(),
+        log: st.log.slice(),
+        display: display(),
+      };
+    }
+
+    /* ---------- limpeza total (f CLx, como o CLEAR da 12C) ---------- */
+
+    function limparTudo() {
+      st.X = 0; st.Y = 0; st.Z = 0; st.T = 0; st.LASTX = 0;
+      st.entering = false; st.entry = ""; st.exp = false;
+      st.prefix = null; st.aguardaReg = null;
+      f.n = 0; f.i = 0; f.pv = 0; f.pmt = 0; f.fv = 0;
+      st.cash.cf0 = 0; st.cash.flows = [];
+      st.amort = []; st.log = []; st.mem = {}; st.calculos = [];
+      st.begin = false; st.decimals = 2;
+      st.lift = true; st.erro = null;
+      st.mensagem = "Memória limpa: pilha, TVM, fluxos, amortização e registradores";
+    }
+
+    /* ---------- exportação do cálculo em CSV ---------- */
+
+    /* Número para sequência de teclas: sem zeros à direita e com separador de milhar
+       ("360", "0,6667", "50.000", "-366,88"). */
+    function numSeq(v) {
+      if (typeof v !== "number" || !isFinite(v)) return "";
+      let bruto = (Math.round(v * 10000) / 10000).toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+      const negativo = bruto.startsWith("-");
+      if (negativo) bruto = bruto.slice(1);
+      const [inteiro, decimal] = bruto.split(".");
+      return (negativo ? "-" : "") + inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, ".") +
+             (decimal ? "," + decimal : "");
+    }
+
+    /* Moeda no relatório: 2 casas e separador de milhar (50.000,00). */
+    function numMoeda(v) {
+      if (typeof v !== "number" || !isFinite(v)) return "";
+      const fixo = Math.abs(v).toFixed(2);
+      const [inteiro, decimal] = fixo.split(".");
+      return (v < 0 ? "-" : "") + inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, ".") + "," + decimal;
+    }
+
+    function numeroCSV(v) {
+      return (typeof v === "number" && isFinite(v)) ? v.toFixed(2).replace(".", ",") : "";
+    }
+
+    function csvRelatorio() {
+      const linhas = [];
+      const quando = new Date().toLocaleString("pt-BR");
+      linhas.push("CALCULADORA SIMONE REIS - EXPORTACAO DE CALCULO");
+      linhas.push("Gerado em;" + quando);
+      linhas.push("");
+
+
+      if (st.cash.flows.length || st.cash.cf0) {
+        linhas.push("FLUXOS DE CAIXA");
+        linhas.push("CF0;" + numeroCSV(st.cash.cf0));
+        st.cash.flows.forEach((fl, i) => {
+          const rotulo = "CF" + (i + 1) + (fl.nj > 1 ? " (Nj=" + fl.nj + ")" : "");
+          linhas.push(rotulo + ";" + numeroCSV(fl.v));
+        });
+        linhas.push("NPV na taxa informada;" + numeroCSV(npvEm(f.i)));
+        linhas.push("");
+      }
+
+      if (st.calculos.length) {
+        linhas.push("CALCULOS REALIZADOS");
+        linhas.push("numero;calculo;sequencia;resultado");
+        st.calculos.forEach((c, idx) =>
+          linhas.push([idx + 1, c.titulo, c.sequencia, c.resultado].join(";")));
+        linhas.push("");
+      }
+
+      let tabela = st.amort.slice();
+      const parcelas = Math.round(f.n) || 0;
+      if (!tabela.length && parcelas) {
+        tabela = tabelaAmortizacao(parcelas);
+      }
+      if (tabela.length) {
+        linhas.push("AMORTIZACAO");
+        linhas.push("parametros;n=" + numeroCSV(f.n) + ";i=" +
+                    (f.i * 100).toFixed(4).replace(".", ",") + "%" + (st.begin ? " (BEG)" : "") +
+                    ";PV=" + numeroCSV(f.pv) + ";PMT=" + numeroCSV(f.pmt) + ";FV=" + numeroCSV(f.fv));
+        linhas.push("parcela;juros;amortizacao;saldo");
+        tabela.forEach((l) => {
+          linhas.push([l.parcela, numeroCSV(l.juros), numeroCSV(l.amortizacao), numeroCSV(l.saldo)].join(";"));
+        });
+        const totalJuros = tabela.reduce((s, l) => s + l.juros, 0);
+        const totalAmort = tabela.reduce((s, l) => s + l.amortizacao, 0);
+        linhas.push("TOTAL;" + numeroCSV(totalJuros) + ";" + numeroCSV(totalAmort) + ";" + numeroCSV(tabela[tabela.length - 1].saldo));
+        linhas.push("");
+      }
+
+      if (st.log.length && false) {   // log de teclas desativado a pedido
+        linhas.push("LOG DE TECLAS");
+        linhas.push("passo;tecla;X antes;X depois;visor");
+        st.log.forEach((l) => {
+          linhas.push([l.passo, l.tecla, numeroCSV(l.antes), numeroCSV(l.x), l.visor].join(";"));
+        });
+      }
+      return linhas.join("\r\n");
+    }
+
+    /* ---------- exportação em PDF (A4, sem dependências) ---------- */
+
+    /* Larguras dos caracteres imprimíveis (ASCII 32..126) em unidades/1000 da
+       Helvetica e Helvetica-Bold (AFM padrão), e o mapa de símbolos que existem
+       só na fonte Symbol — necessário para o PDF mostrar "Δ%" como no teclado. */
+    const PDF_HELV = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584];
+    const PDF_HELV_B = [278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584];
+    const PDF_SIMB = {
+      "\u0394": [0x44, 612],   // Delta
+      "\u03a3": [0x53, 592],   // Sigma
+      "\u03c0": [0x70, 549],   // pi
+      "\u221a": [0xd6, 549],   // raiz
+      "\u00d7": [0xb4, 549],   // multiplicação
+      "\u00f7": [0xb8, 549],   // divisão
+      "\u2265": [0xb3, 549],   // >=
+      "\u2264": [0xa3, 549]    // <=
+    };
+
+    function pdfRelatorio() {
+      const apenasAscii = (s) => String(s)
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[\u2212\u2013\u2014]/g, "-")
+        .replace(/[^\x20-\x7e]/g, " ");
+
+      // separa o texto em trechos Helvetica e símbolos da fonte Symbol
+      const trechos = (texto) => {
+        const s = String(texto).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const saida = [];
+        let atual = "";
+        for (const ch of s) {
+          if (PDF_SIMB[ch]) {
+            if (atual) { saida.push({ txt: apenasAscii(atual), sym: false }); atual = ""; }
+            saida.push({ txt: String.fromCharCode(PDF_SIMB[ch][0]), sym: true, largura: PDF_SIMB[ch][1] });
+          } else {
+            atual += ch;
+          }
+        }
+        if (atual) saida.push({ txt: apenasAscii(atual), sym: false });
+        return saida;
+      };
+
+      const escapa = (s) => String(s).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+      const larguraTexto = (txt, bold, tam) => {
+        const tab = bold ? PDF_HELV_B : PDF_HELV;
+        let w = 0;
+        for (const ch of txt) {
+          const c = ch.charCodeAt(0);
+          w += c >= 32 && c <= 126 ? tab[c - 32] : tab[0];
+        }
+        return (w * tam) / 1000;
+      };
+
+      const ESQ = 40, TOPO = 800, PISO = 58;
+      const paginas = [];
+      let corpo = "", y = TOPO;
+
+      function novaPagina() {
+        paginas.push(corpo);
+        corpo = "";
+        y = TOPO;
+      }
+      function linha(texto, opts) {
+        const o = opts || {};
+        const altura = o.dy || 13;
+        if (y - altura < PISO) novaPagina();
+        y -= altura;
+        const tam = o.size || 9.5;
+        let x = o.x === undefined ? ESQ : o.x;
+        trechos(texto).forEach((t) => {
+          const fonte = t.sym ? "/F3" : (o.bold ? "/F2" : "/F1");
+          corpo += `BT ${fonte} ${tam} Tf 1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm (${escapa(t.txt)}) Tj ET\n`;
+          x += t.sym ? (t.largura * tam) / 1000 : larguraTexto(t.txt, o.bold, tam);
+        });
+      }
+      const X_CEL = [ESQ, 140, 235, 350, 460];
+      function escreveLinhaTabela(cels, bold) {
+        const yLinha = y - 13;
+        cels.forEach((c, i) => {
+          const fonte = bold ? "/F2" : "/F1";
+          corpo += `BT ${fonte} 9 Tf 1 0 0 1 ${X_CEL[i]} ${yLinha.toFixed(2)} Tm (${escapa(apenasAscii(c))}) Tj ET\n`;
+        });
+        y = yLinha;
+      }
+      function cabecalhoTabela() {
+        escreveLinhaTabela(["Parcela", "Juros", "Amortizacao", "Saldo"], true);
+      }
+      function linhaTabela(cels) {
+        if (y - 13 < PISO) { novaPagina(); cabecalhoTabela(); }
+        escreveLinhaTabela(cels, false);
+      }
+
+      // cabeçalho
+      linha("Calculadora Simone Reis - relatorio de calculo", { bold: true, size: 15, dy: 0 });
+      linha("Gerado em " + new Date().toLocaleString("pt-BR"), { size: 9 });
+      linha("");
+
+
+      let tabelaImpressa = false;
+      let fluxosImpressos = false;
+
+      function imprimeFluxosDeCaixa(force) {
+        if (fluxosImpressos) return;
+        if (!force && !(st.cash.flows.length || st.cash.cf0)) return;
+        fluxosImpressos = true;
+        linha("");
+        linha("Fluxos de caixa", { bold: true, size: 11, dy: 16 });
+        linha("CF0 = " + numeroCSV(st.cash.cf0));
+        if (!st.cash.flows.length) {
+          linha("CFj = nenhum fluxo registrado (o NPV considera apenas o CF0)", { size: 9 });
+        }
+        st.cash.flows.forEach((fl, i) => {
+          linha("CF" + (i + 1) + (fl.nj > 1 ? " (Nj = " + fl.nj + ")" : "") + " = " + numeroCSV(fl.v));
+        });
+        // se o NPV não foi calculado (nenhum registro de fluxo), mostra o valor na taxa atual
+        if (!st.calculos.some((c) => c.tipo === "fluxo")) {
+          linha("NPV na taxa informada = " + numeroCSV(npvEm(f.i)));
+        }
+      }
+
+      function imprimeTabelaAmortizacao() {
+        if (tabelaImpressa) return;
+        let tabela = st.amort.slice();
+        const parcelas = Math.round(f.n) || 0;
+        if (!tabela.length && parcelas) tabela = tabelaAmortizacao(parcelas);
+        if (!tabela.length) return;
+        tabelaImpressa = true;
+
+        linha("");
+        linha("Tabela de amortizacao", { bold: true, size: 11, dy: 18 });
+        linha("Parametros usados", { bold: true, size: 9.5 });
+        linha("n = " + numSeq(f.n) + "   i = " + numSeq(f.i * 100) + "% ao periodo" +
+              (st.begin ? "   (BEG)" : "") + "   PV = " + numMoeda(f.pv) +
+              "   PMT = " + numMoeda(f.pmt) + "   FV = " + numMoeda(f.fv), { size: 9 });
+        linha("");
+        cabecalhoTabela();
+        tabela.forEach((l) => {
+          linhaTabela([String(l.parcela), numeroCSV(l.juros), numeroCSV(l.amortizacao), numeroCSV(l.saldo)]);
+        });
+        const totalJuros = tabela.reduce((acc, l) => acc + l.juros, 0);
+        const totalAmort = tabela.reduce((acc, l) => acc + l.amortizacao, 0);
+        linha("");
+        linha("Total de juros: " + numeroCSV(totalJuros), { bold: true, dy: 15 });
+        linha("Total amortizado: " + numeroCSV(totalAmort), { bold: true });
+        linha("Saldo final: " + numeroCSV(tabela[tabela.length - 1].saldo));
+      }
+
+      if (st.calculos.length) {
+        linha("");
+        linha("Calculos realizados", { bold: true, size: 11, dy: 18 });
+        st.calculos.forEach((c, idx) => {
+          if (idx > 0) linha("", { dy: 16 });   // espaço entre um cálculo e o seguinte
+          linha("Calculo " + (idx + 1) + ": " + c.titulo, { bold: true, size: 9.5, dy: 13 });
+          linha(c.sequencia.replace(/ \u00b7 /g, "  |  "), { size: 9 });
+          linha(c.resultado, { bold: true, size: 9.5 });
+          if (c.tipo === "fluxo") imprimeFluxosDeCaixa(true);
+          if (c.tipo === "tvm" || c.tipo === "amort") imprimeTabelaAmortizacao();
+        });
+      }
+
+      // relatório sem cálculo registrado: imprime o que estiver nos registradores
+      if (!st.calculos.length) {
+        imprimeFluxosDeCaixa();
+        imprimeTabelaAmortizacao();
+      }
+
+      if (!corpo) novaPagina();
+      paginas.push(corpo);
+
+      // rodapé com número de página
+      const paginasComRodape = paginas.map((cont, i) => {
+        const n = i + 1, total = paginas.length;
+        return cont + `BT /F1 8 Tf 1 0 0 1 ${ESQ} 34 Tm (Pagina ${n} de ${total}) Tj ET\n`;
+      });
+
+      // montagem dos objetos PDF
+      const objetos = [];
+      objetos.push("<< /Type /Catalog /Pages 2 0 R >>");
+      objetos.push("");   // preenchido depois
+      objetos.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
+      objetos.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+      objetos.push("<< /Type /Font /Subtype /Type1 /BaseFont /Symbol >>");
+
+      const kids = [];
+      paginasComRodape.forEach((cont) => {
+        const numPagina = objetos.length + 1;
+        const numConteudo = numPagina + 1;
+        kids.push(numPagina + " 0 R");
+        objetos.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents ${numConteudo} 0 R >>`);
+        objetos.push(`<< /Length ${cont.length} >>\nstream\n${cont}endstream`);
+      });
+      objetos[1] = `<< /Type /Pages /Kids [${kids.join(" ")}] /Count ${kids.length} >>`;
+
+      let pdf = "%PDF-1.4\n";
+      const offsets = [];
+      objetos.forEach((obj, i) => {
+        offsets.push(pdf.length);
+        pdf += (i + 1) + " 0 obj\n" + obj + "\nendobj\n";
+      });
+      const inicioXref = pdf.length;
+      pdf += "xref\n0 " + (objetos.length + 1) + "\n0000000000 65535 f \n";
+      offsets.forEach((o) => { pdf += String(o).padStart(10, "0") + " 00000 n \n"; });
+      pdf += "trailer\n<< /Size " + (objetos.length + 1) + " /Root 1 0 R >>\nstartxref\n" + inicioXref + "\n%%EOF\n";
+      return pdf;
+    }
+
+    return { tecla, estado, display, formata, resolve, guardaTVM, mostraTVM, tabela: (ate) => tabelaAmortizacao(ate), csv: csvRelatorio, pdf: pdfRelatorio, limparTudo,
+             alternarBegin: () => { st.begin = !st.begin; return st.begin; }, st };
+  }
+
+  /* ================= datas: dias corridos, dias úteis e dia da semana =================
+     Funções puras (sem depender de fuso): as datas entram como "AAAA-MM-DD" e são tratadas
+     em UTC, para que 01/01 nunca "vire" 31/12 por causa do fuso do aparelho.            */
+
+  function parseData(iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || "").trim());
+    if (!m) return null;
+    const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    if (isNaN(d.getTime())) return null;
+    // rejeita datas impossíveis (ex.: 2026-02-31 vira 03/03 no Date)
+    if (d.getUTCFullYear() !== +m[1] || d.getUTCMonth() !== +m[2] - 1 || d.getUTCDate() !== +m[3]) return null;
+    return d;
+  }
+
+  const DIA_MS = 86400000;
+  const DIAS_SEMANA = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+
+  // Páscoa gregoriana — Meeus/Jones/Butcher. Base dos feriados móveis brasileiros.
+  function pascoa(ano) {
+    const a = ano % 19, b = Math.floor(ano / 100), c = ano % 100,
+          d = Math.floor(b / 4), e = b % 4,
+          f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3),
+          h = (19 * a + b - d - g + 15) % 30,
+          i = Math.floor(c / 4), k = c % 4,
+          l = (32 + 2 * e + 2 * i - h - k) % 7,
+          m = Math.floor((a + 11 * h + 22 * l) / 451),
+          mes = Math.floor((h + l - 7 * m + 114) / 31),
+          dia = ((h + l - 7 * m + 114) % 31) + 1;
+    return new Date(Date.UTC(ano, mes - 1, dia));
+  }
+
+  // Feriados nacionais brasileiros (fixos + móveis) de um ano.
+  function feriados(ano) {
+    const p = pascoa(ano), soma = (n) => new Date(p.getTime() + n * DIA_MS);
+    const fixos = [[1, 1], [4, 21], [5, 1], [9, 7], [10, 12], [11, 2], [11, 15], [11, 20], [12, 25]];
+    const nomes = {
+      "1-1": "Confraternização Universal", "4-21": "Tiradentes", "5-1": "Dia do Trabalho",
+      "9-7": "Independência", "10-12": "Nossa Senhora Aparecida", "11-2": "Finados",
+      "11-15": "Proclamação da República", "11-20": "Consciência Negra", "12-25": "Natal",
+    };
+    const lista = fixos.map(([mes, dia]) => ({
+      data: new Date(Date.UTC(ano, mes - 1, dia)),
+      nome: nomes[mes + "-" + dia],
+    }));
+    lista.push({ data: soma(-48), nome: "Carnaval (segunda)" });
+    lista.push({ data: soma(-47), nome: "Carnaval (terça)" });
+    lista.push({ data: soma(-2), nome: "Sexta-feira Santa" });
+    lista.push({ data: soma(60), nome: "Corpus Christi" });
+    return lista;
+  }
+
+  function chaveData(d) {
+    return d.getUTCFullYear() + "-" + String(d.getUTCMonth() + 1).padStart(2, "0") + "-" + String(d.getUTCDate()).padStart(2, "0");
+  }
+
+  function nomeFeriado(d) {
+    const f = feriados(d.getUTCFullYear()).find((x) => x.data.getTime() === d.getTime());
+    return f ? f.nome : null;
+  }
+
+  // Diferença em dias corridos: positiva quando `fim` é depois de `inicio`.
+  function diasCorridos(inicio, fim) {
+    const a = parseData(inicio), b = parseData(fim);
+    if (!a || !b) return null;
+    return Math.round((b.getTime() - a.getTime()) / DIA_MS);
+  }
+
+  /* Dias úteis entre duas datas, convenção de mercado: conta de inicio+1 até fim
+     (exclui o dia inicial, inclui o final), pulando sábados, domingos e — se
+     `contarFeriados` for true (padrão) — os feriados nacionais.                 */
+  function diasUteis(inicio, fim, contarFeriados) {
+    const a = parseData(inicio), b = parseData(fim);
+    if (!a || !b) return null;
+    const desconta = contarFeriados !== false;
+    const passo = b.getTime() >= a.getTime() ? 1 : -1;
+    let total = 0;
+    for (let t = a.getTime() + passo * DIA_MS; passo > 0 ? t <= b.getTime() : t >= b.getTime(); t += passo * DIA_MS) {
+      const d = new Date(t), dow = d.getUTCDay();
+      if (dow === 0 || dow === 6) continue;
+      if (desconta && nomeFeriado(d)) continue;
+      total += passo;
+    }
+    return total;
+  }
+
+  // Dia da semana em português, com o nome do feriado quando houver.
+  function diaDaSemana(iso) {
+    const d = parseData(iso);
+    if (!d) return null;
+    return { dia: DIAS_SEMANA[d.getUTCDay()], iso: chaveData(d), feriado: nomeFeriado(d) };
+  }
+
+  // Resumo pronto para a tela: tudo que o painel de datas mostra.
+  function resumoDatas(inicio, fim) {
+    const a = parseData(inicio), b = parseData(fim);
+    if (!a || !b) return { erro: "informe as duas datas (AAAA-MM-DD)" };
+    const ini = chaveData(a), f = chaveData(b);
+    const corridos = diasCorridos(ini, f);
+    const uteisComFeriado = diasUteis(ini, f, true);
+    const uteisSemFeriado = diasUteis(ini, f, false);
+    const iniInfo = diaDaSemana(ini), fimInfo = diaDaSemana(f);
+    const de = Math.min(a.getTime(), b.getTime()), ate = Math.max(a.getTime(), b.getTime());
+    const noIntervalo = [];
+    for (let ano = new Date(de).getUTCFullYear(); ano <= new Date(ate).getUTCFullYear(); ano++) {
+      feriados(ano).forEach((x) => {
+        if (x.data.getTime() >= de && x.data.getTime() <= ate) noIntervalo.push({ iso: chaveData(x.data), nome: x.nome });
+      });
+    }
+    noIntervalo.sort((x, y) => (x.iso < y.iso ? -1 : 1));
+    return {
+      inicio: ini, fim: f,
+      inicioDia: iniInfo.dia, fimDia: fimInfo.dia,
+      inicioFeriado: iniInfo.feriado, fimFeriado: fimInfo.feriado,
+      diasCorridos: corridos,
+      diasUteis: uteisComFeriado,      // descontando fins de semana e feriados nacionais
+      diasUteisSemFeriado: uteisSemFeriado, // só fins de semana
+      feriadosDescontados: uteisSemFeriado - uteisComFeriado,
+      feriadosNoIntervalo: noIntervalo,
+      semanas: corridos == null ? null : +(corridos / 7).toFixed(2),
+    };
+  }
+
+  const api = { makeCalc, r10, datas: { parseData, diasCorridos, diasUteis, diaDaSemana, resumoDatas, feriados, pascoa, chaveData } };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else root.Calc12C = api;
+})(typeof globalThis !== "undefined" ? globalThis : this);
+
+</script>
+
+<script>
+(function () {
+  "use strict";
+  const calc = Calc12C.makeCalc();
+
+  // layout: [id, rótulo principal, tipo, shift f, shift g, span]
+  const TECLAS = [
+    ["n", "n", "fn", "AMRT", "12×", 1],
+    ["i", "i", "fn", "INT", "12÷", 1],
+    ["pv", "PV", "fn", "NPV", "CF0", 1],
+    ["pmt", "PMT", "fn", "RND", "CFj", 1],
+    ["fv", "FV", "fn", "IRR", "Nj", 1],
+    ["chs", "CHS", "fn", "", "", 1],
+    ["7", "7", "num", "", "", 1],
+    ["8", "8", "num", "", "BEG", 1],
+    ["9", "9", "num", "", "", 1],
+    ["/", "÷", "arith", "", "", 1],
+
+    ["yx", "y<sup>x</sup>", "fn", "x!", "√x", 1],
+    ["inv", "1/x", "fn", "FRAC", "INT", 1],
+    ["pctt", "%T", "fn", "", "ΔDYS", 1],
+    ["dpct", "Δ%", "fn", "", "", 1],
+    ["%", "%", "fn", "", "", 1],
+    ["eex", "EEX", "fn", "", "", 1],
+    ["4", "4", "num", "", "", 1],
+    ["5", "5", "num", "", "", 1],
+    ["6", "6", "num", "", "", 1],
+    ["*", "×", "arith", "", "", 1],
+
+    ["rdn", "R↓", "fn", "", "", 1],
+    ["xy", "x≷y", "fn", "", "", 1],
+    ["clx", "CLx", "fn", "", "", 1],
+    ["sigma", "Σ+", "fn", "", "", 1],
+    ["sqrt", "√x", "fn", "e<sup>x</sup>", "x<sup>2</sup>", 1],
+    ["1", "1", "num", "", "", 1],
+    ["2", "2", "num", "", "", 1],
+    ["3", "3", "num", "", "", 1],
+    ["-", "−", "arith", "", "", 1],
+
+    ["on", "ON", "fn", "", "", 1],
+    ["f", "f", "prefix-f", "", "", 1],
+    ["g", "g", "prefix-g", "", "", 1],
+    ["sto", "STO", "fn", "", "", 1],
+    ["rcl", "RCL", "fn", "", "", 1],
+    ["enter", "ENTER", "enter", "", "", 1],
+    ["0", "0", "num", "", "FIX 0", 1],
+    [".", ".", "num", "", "", 1],
+    ["lastx", "LSTx", "fn", "", "", 1],
+    ["+", "+", "arith", "", "", 1],
+  ];
+
+  // Arranjo fiel ao 12C (10 colunas) e arranjo confortável para celular em retrato (5 colunas).
+  // [linha, coluna] ou [linha, coluna, span de linhas]
+  const ARRANJO_12C = {
+    cols: 10,
+    pos: {
+      rdn: [3, 1], xy: [3, 2], clx: [3, 3], sigma: [3, 4], sqrt: [3, 5],
+      enter: [3, 6, 2],
+      "1": [3, 7], "2": [3, 8], "3": [3, 9], "-": [3, 10],
+      on: [4, 1], f: [4, 2], g: [4, 3], sto: [4, 4], rcl: [4, 5],
+      "0": [4, 7], ".": [4, 8], lastx: [4, 9], "+": [4, 10],
+    },
+  };
+
+  const ARRANJO_CELULAR = {
+    cols: 5,
+    pos: {
+      n: [1, 1], i: [1, 2], pv: [1, 3], pmt: [1, 4], fv: [1, 5],
+      chs: [2, 1], "7": [2, 2], "8": [2, 3], "9": [2, 4], "/": [2, 5],
+      yx: [3, 1], "4": [3, 2], "5": [3, 3], "6": [3, 4], "*": [3, 5],
+      inv: [4, 1], "1": [4, 2], "2": [4, 3], "3": [4, 4], "-": [4, 5],
+      pctt: [5, 1], "0": [5, 2], ".": [5, 3], lastx: [5, 4], "+": [5, 5],
+      dpct: [6, 1], "%": [6, 2], eex: [6, 3], sqrt: [6, 4], sigma: [6, 5],
+      rdn: [7, 1], xy: [7, 2], clx: [7, 3], sto: [7, 4], rcl: [7, 5],
+      on: [8, 1], f: [8, 2], g: [8, 3], enter: [8, 4, 1, 2],
+    },
+  };
+
+  const pad = document.getElementById("pad");
+  const lcd = document.getElementById("lcd");
+  const hint = document.getElementById("hint");
+  const ind = {
+    f: document.getElementById("ind-f"),
+    g: document.getElementById("ind-g"),
+    sto: document.getElementById("ind-sto"),
+    dec: document.getElementById("ind-dec"),
+    rpn: document.getElementById("ind-rpn"),
+    beg: document.getElementById("ind-beg"),
+  };
+  const pilha = {
+    X: document.getElementById("s-X"),
+    Y: document.getElementById("s-Y"),
+    Z: document.getElementById("s-Z"),
+    T: document.getElementById("s-T"),
+  };
+
+  const botoes = {};
+  const semMarcacao = (t) => String(t).replace(/<[^>]*>/g, "");
+  TECLAS.forEach(([id, rotulo, tipo, sf, sg]) => {
+    const b = document.createElement("button");
+    b.className = "key " + tipo;
+    b.type = "button";
+    b.dataset.key = id;
+    b.setAttribute("aria-label", semMarcacao(rotulo) + (sf ? ", f: " + semMarcacao(sf) : "") + (sg ? ", g: " + semMarcacao(sg) : ""));
+    const marcas = [];
+    if (sf) marcas.push(`<span class="shift f">${sf}</span>`);
+    if (sg) marcas.push(`<span class="shift g">${sg}</span>`);
+    b.innerHTML = marcas.join("") + `<span class="cap">${rotulo}</span>`;
+    if (!sf && !sg) b.classList.add("plain");
+    if (semMarcacao(rotulo).length >= 4) b.classList.add("longa");
+    b.addEventListener("click", () => apertar(id));
+    pad.appendChild(b);
+    botoes[id] = b;
+  });
+
+  function arranjoAtual() {
+    // 10 colunas quando há largura para teclas legíveis; 5 em tela estreita.
+    // O corte é por largura em px (não por aparelho): celular deitado e tablet
+    // também recebem o arranjo de 10 colunas.
+    return window.innerWidth >= 640 ? ARRANJO_12C : ARRANJO_CELULAR;
+  }
+
+  function aplicarArranjo() {
+    const a = arranjoAtual();
+    pad.style.gridTemplateColumns = `repeat(${a.cols}, minmax(0, 1fr))`;
+    const linhas = Math.max(...Object.values(a.pos).map((p) => p[0] + ((p[2] || 1) - 1)));
+    pad.style.setProperty("--linhas", linhas);
+    Object.keys(botoes).forEach((id) => {
+      const b = botoes[id];
+      const p = a.pos[id];
+      if (p) {
+        b.style.gridRow = p[2] ? `${p[0]} / span ${p[2]}` : `${p[0]}`;
+        b.style.gridColumn = p[3] ? `${p[1]} / span ${p[3]}` : `${p[1]}`;
+        b.classList.add("posicionada");
+      } else {
+        b.style.gridRow = "";
+        b.style.gridColumn = "";
+        b.classList.remove("posicionada");
+      }
+    });
+  }
+  window.addEventListener("resize", aplicarArranjo);
+  window.addEventListener("orientationchange", () => setTimeout(aplicarArranjo, 120));
+
+  function apertar(id) {
+    const b = botoes[id];
+    if (b) {
+      b.classList.add("pressed");
+      setTimeout(() => b.classList.remove("pressed"), 90);
+    }
+    if (id === "sigma") {          // nesta versão, Σ+ abre o painel de fluxos/amortização
+      alternarPainel();
+      return;
+    }
+    calc.tecla(id);
+    render();
+  }
+
+  let hintTimer = null;
+  function dica(msg, aviso) {
+    hint.textContent = msg;
+    hint.className = "hint" + (aviso ? " warn" : "");
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(dicaPadrao, 4200);
+  }
+  function dicaPadrao() {
+    // a linha entre o visor e o teclado não mostra mais instruções fixas:
+    // fica vazia (e sem ocupar espaço) e só aparece quando há mensagem.
+    hint.className = "hint";
+    hint.textContent = "";
+  }
+
+  function render() {
+    const st = calc.estado();
+    lcd.textContent = st.display;
+    pilha.X.textContent = calc.formata(st.X);
+    pilha.Y.textContent = calc.formata(st.Y);
+    pilha.Z.textContent = calc.formata(st.Z);
+    pilha.T.textContent = calc.formata(st.T);
+    ind.f.classList.toggle("on", st.prefix === "f");
+    ind.g.classList.toggle("on", st.prefix === "g");
+    ind.dec.textContent = String(st.decimals);
+    ind.sto.classList.toggle("on", !!st.aguardaReg);
+    ind.beg.classList.toggle("on", !!st.begin);
+
+    if (st.erro) {
+      hint.textContent = (st.mensagem ? st.mensagem + " — " : "") + st.erro + ". CLx ou ON limpa.";
+      hint.className = "hint warn";
+      clearTimeout(hintTimer);
+      return;
+    }
+    if (st.mensagem) {
+      dica(st.mensagem, true);
+      st.mensagem = "";
+      renderPanel();
+      return;
+    }
+    renderPanel();
+    dicaPadrao();
+  }
+
+  /* ---------- painel: fluxos de caixa e amortização ---------- */
+  const painel = document.getElementById("painel");
+  const togglePainel = document.getElementById("toggle-painel");
+  const listaCF = document.getElementById("cf-list");
+  const resumoAmort = document.getElementById("amort-resumo");
+  const tabelaWrap = document.getElementById("tabela-wrap");
+  const tabelaAmort = document.getElementById("tabela-amort");
+
+  const folhaDatas = document.getElementById("folha-datas");
+  const toggleDatas = document.getElementById("toggle-datas");
+
+  function alternarPainel(forcar) {
+    const abrir = typeof forcar === "boolean" ? forcar : painel.hidden;
+    if (abrir && !folhaDatas.hidden) alternarDatas(false);   // uma folha por vez
+    painel.hidden = !abrir;
+    togglePainel.setAttribute("aria-expanded", String(abrir));
+    if (abrir) renderPanel();
+  }
+
+  function alternarDatas(forcar) {
+    const abrir = typeof forcar === "boolean" ? forcar : folhaDatas.hidden;
+    folhaDatas.hidden = !abrir;
+    toggleDatas.setAttribute("aria-expanded", String(abrir));
+    if (abrir) {
+      if (!painel.hidden) alternarPainel(false);
+      renderDatas();
+    }
+  }
+
+  function renderPanel() {
+    if (painel.hidden) return;
+    const st = calc.estado();
+
+    // fluxos
+    const linhas = [`<div class="linha"><span>CF0</span><span>${calc.formata(st.cash.cf0)}</span></div>`];
+    st.cash.flows.forEach((fl, i) => {
+      linhas.push(`<div class="linha"><span>CF${i + 1}${fl.nj > 1 ? " ×" + fl.nj : ""}</span><span>${calc.formata(fl.v)}</span></div>`);
+    });
+    if (!st.cash.flows.length && !st.cash.cf0) {
+      listaCF.innerHTML = '<div class="vazio">sem fluxos — use g PV (CF0), g PMT (CFj) e g FV (Nj)</div>';
+    } else {
+      listaCF.innerHTML = linhas.join("");
+    }
+
+    // resultados de NPV / IRR (ficam visíveis aqui, já que a folha cobre o visor)
+    const alvoRes = document.getElementById("cf-resultado");
+    if (alvoRes) {
+      const pct = (v) => (v * 100).toFixed(4).replace(".", ",") + "%";
+      const linha = (rot, obj, sufixo) => {
+        if (!obj) return `<div class="res vazio"><span>${rot}</span><b>—</b></div>`;
+        if (obj.erro) return `<div class="res vazio"><span>${rot}</span><b>${obj.erro}</b></div>`;
+        return `<div class="res"><span>${rot}</span><b>${calc.formata(obj.valor)}${sufixo || ""}</b></div>`;
+      };
+      alvoRes.innerHTML =
+        `<div class="res res-taxa"><span>Taxa (i)</span><b>${pct(st.financial.i)}</b></div>` +
+        linha("NPV", resultadoNPV) +
+        linha("IRR", resultadoIRR, "%");
+    }
+
+    // resumo/TVM
+    const fi = st.financial;
+    resumoAmort.innerHTML =
+      `n ${calc.formata(fi.n)} &nbsp; i ${(fi.i * 100).toFixed(4).replace(".", ",")}%<br>` +
+      `PV ${calc.formata(fi.pv)} &nbsp; PMT ${calc.formata(fi.pmt)}`;
+
+    // tabela já calculada (via f n / AMORT)
+    if (st.amort.length) desenhaTabela(st.amort);
+  }
+
+  function desenhaTabela(linhas) {
+    if (!linhas || !linhas.length) return;
+    const cab = "<thead><tr><th>#</th><th>juros</th><th>amortização</th><th>saldo</th></tr></thead>";
+    const corpo = linhas.map((l) =>
+      `<tr><td>${l.parcela}</td><td>${calc.formata(l.juros)}</td><td>${calc.formata(l.amortizacao)}</td><td>${calc.formata(l.saldo)}</td></tr>`
+    ).join("");
+    tabelaAmort.innerHTML = cab + "<tbody>" + corpo + "</tbody>";
+    tabelaWrap.hidden = false;
+  }
+
+  let resultadoNPV = null;
+  let resultadoIRR = null;
+
+  /* ---------- painel: datas, dias úteis e dia da semana ---------- */
+  const campoIni = document.getElementById("data-ini");
+  const campoFim = document.getElementById("data-fim");
+  const resDatas = document.getElementById("datas-resultado");
+
+  function isoLocal(deslocamentoDias) {
+    const d = new Date();
+    d.setDate(d.getDate() + (deslocamentoDias || 0));
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  const brData = (iso) => iso.split("-").reverse().join("/");
+
+  function renderDatas() {
+    const r = Calc12C.datas.resumoDatas(campoIni.value, campoFim.value);
+    if (r.erro) {
+      resDatas.innerHTML = '<div class="vazio">' + r.erro + "</div>";
+      return;
+    }
+    const marca = (f) => (f ? " · " + f : "");
+    const linhas = [
+      `<div class="res"><span>início</span><b>${brData(r.inicio)} · ${r.inicioDia}${marca(r.inicioFeriado)}</b></div>`,
+      `<div class="res"><span>fim</span><b>${brData(r.fim)} · ${r.fimDia}${marca(r.fimFeriado)}</b></div>`,
+      `<div class="res"><span>dias corridos</span><b>${r.diasCorridos}</b></div>`,
+      `<div class="res destaque"><span>dias úteis (sem feriados)</span><b>${r.diasUteis}</b></div>`,
+      `<div class="res"><span>dias úteis (só fins de semana)</span><b>${r.diasUteisSemFeriado}</b></div>`,
+      `<div class="res"><span>feriados em dia útil (descontados)</span><b>${r.feriadosDescontados}</b></div>`,
+      `<div class="res"><span>semanas</span><b>${String(r.semanas).replace(".", ",")}</b></div>`,
+    ];
+    if (r.feriadosNoIntervalo.length) {
+      const det = r.feriadosNoIntervalo.map((f) => {
+        const info = Calc12C.datas.diaDaSemana(f.iso);
+        const fimDeSemana = info.dia === "sábado" || info.dia === "domingo";
+        return brData(f.iso) + " " + f.nome + " (" + info.dia + (fimDeSemana ? " — não desconta" : "") + ")";
+      });
+      linhas.push('<div class="feriados-lista">feriados no intervalo: ' + det.join(" · ") + "</div>");
+    }
+    resDatas.innerHTML = linhas.join("");
+  }
+
+  if (campoIni && campoFim) {
+    campoIni.value = isoLocal(0);
+    campoFim.value = isoLocal(30);
+    document.getElementById("btn-datas").addEventListener("click", renderDatas);
+    campoIni.addEventListener("change", renderDatas);
+    campoFim.addEventListener("change", renderDatas);
+  }
+
+  togglePainel.addEventListener("click", () => alternarPainel());
+  document.getElementById("btn-fechar-painel").addEventListener("click", () => alternarPainel(false));
+  toggleDatas.addEventListener("click", () => alternarDatas());
+  document.getElementById("btn-fechar-datas").addEventListener("click", () => alternarDatas(false));
+  document.getElementById("btn-npv").addEventListener("click", () => {
+    alternarPainel(true);
+    const antes = calc.estado().erro;
+    calc.tecla("f"); calc.tecla("pv");
+    const st = calc.estado();
+    // o resultado vai para o visor; guardamos também para exibir dentro do painel,
+    // porque a folha cobre o display
+    resultadoNPV = st.erro ? { erro: st.erro } : { valor: st.X, taxa: st.financial.i };
+    render();
+  });
+  document.getElementById("btn-irr").addEventListener("click", () => {
+    alternarPainel(true);
+    calc.tecla("f"); calc.tecla("fv");
+    const st = calc.estado();
+    resultadoIRR = st.erro ? { erro: st.erro } : { valor: st.X };
+    render();
+  });
+  document.getElementById("btn-tabela").addEventListener("click", () => {
+    const st = calc.estado();
+    const total = Math.round(st.financial.n) || 0;
+    if (!total) { dica("Tabela: defina n, i, PV e PMT antes.", true); return; }
+    desenhaTabela(calc.tabela(total));
+  });
+
+  document.getElementById("btn-exportar").addEventListener("click", () => {
+    try {
+      const csv = "\uFEFF" + calc.csv();     // BOM para o Excel ler acentos
+      const bytes = new TextEncoder().encode(csv);
+      salvarArquivo(bytes, "csv", "text/csv;charset=utf-8",
+                    "CSV exportado: parâmetros, fluxos e amortização.");
+    } catch (e) {
+      dica("Falha ao exportar: " + e.message, true);
+    }
+  });
+
+  document.getElementById("btn-exportar-pdf").addEventListener("click", () => {
+    try {
+      const texto = calc.pdf();                     // PDF montado no núcleo (ASCII/latin1)
+      const bytes = new Uint8Array(texto.length);
+      for (let i = 0; i < texto.length; i++) bytes[i] = texto.charCodeAt(i) & 0xff;
+      salvarArquivo(bytes, "pdf", "application/pdf",
+                    "PDF exportado (A4, com tabela completa e totais).");
+    } catch (e) {
+      dica("Falha ao gerar o PDF: " + e.message, true);
+    }
+  });
+
+  function carimbo() {
+    const d = new Date();
+    const dois = (x) => String(x).padStart(2, "0");
+    return `${d.getFullYear()}${dois(d.getMonth() + 1)}${dois(d.getDate())}-${dois(d.getHours())}${dois(d.getMinutes())}`;
+  }
+
+  function base64De(bytes) {
+    let bin = "";
+    const passo = 0x8000;
+    for (let i = 0; i < bytes.length; i += passo) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + passo));
+    }
+    return btoa(bin);
+  }
+
+  /* No navegador, baixa por blob. No APK Android, WebView não baixa blob:
+     manda o conteúdo em base64 para a ponte Java, que grava em Downloads. */
+  function salvarArquivo(bytes, extensao, mime, mensagemOk) {
+    const nome = `calculo-simone-reis-${carimbo()}.${extensao}`;
+    const ponte = window.AndroidPonte;
+    if (ponte && typeof ponte.salvar === "function") {
+      try {
+        const resposta = String(ponte.salvar(nome, base64De(bytes), mime));
+        if (resposta.indexOf("OK") === 0) dica(mensagemOk + " → " + resposta.slice(3), false);
+        else dica("Falha ao salvar: " + resposta, true);
+      } catch (e) {
+        dica("Falha na ponte do Android: " + e.message, true);
+      }
+      return;
+    }
+    try {
+      baixar(new Blob([bytes], { type: mime }), nome);
+      dica(mensagemOk, false);
+    } catch (e) {
+      dica("Falha ao baixar: " + e.message, true);
+    }
+  }
+
+  function baixar(blob, nome) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nome;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+  }
+
+  const MAPA_TECLADO = {
+    "Enter": "enter",
+    "Backspace": "clx",
+    "Delete": "clx",
+    "Escape": "on",
+    "+": "+", "-": "-", "*": "*", "/": "/",
+    ".": ".", ",": ".",
+    "x": "xy", "r": "rdn", "p": "pctt",
+  };
+
+  document.addEventListener("keydown", (ev) => {
+    if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    let k = null;
+    if (/^[0-9]$/.test(ev.key)) k = ev.key;
+    else if (MAPA_TECLADO[ev.key]) k = MAPA_TECLADO[ev.key];
+    else if (ev.key === "f" || ev.key === "F") k = "f";
+    else if (ev.key === "g" || ev.key === "G") k = "g";
+    if (!k) return;
+    ev.preventDefault();
+    apertar(k);
+  });
+
+  /* ---------- persistência do cálculo (localStorage) ---------- */
+  const CHAVE = "calc12c_v4";
+
+  function salvar() {
+    try {
+      const st = calc.estado();
+      localStorage.setItem(CHAVE, JSON.stringify({
+        financial: st.financial,
+        cash: st.cash,
+        mem: st.mem,
+        decimals: st.decimals,
+        begin: st.begin,
+        salvou: Date.now(),
+      }));
+    } catch (e) { /* armazenamento indisponível: segue só na sessão */ }
+  }
+
+  function carregarSalvo() {
+    try {
+      const bruto = localStorage.getItem(CHAVE) || localStorage.getItem("calc12c_v3");
+      if (!bruto) return false;
+      const d = JSON.parse(bruto);
+      const s = calc.st;
+      if (d.financial) {
+        for (const k of ["n", "i", "pv", "pmt", "fv"]) s.financial[k] = Number(d.financial[k]) || 0;
+      }
+      if (d.cash) {
+        s.cash.cf0 = Number(d.cash.cf0) || 0;
+        s.cash.flows = (d.cash.flows || []).map((x) => ({ v: Number(x.v) || 0, nj: Math.max(1, Math.round(x.nj) || 1) }));
+      }
+      if (d.mem) s.mem = Object.assign({}, d.mem);
+      if (typeof d.decimals === "number") s.decimals = d.decimals;
+      if (typeof d.begin === "boolean") s.begin = d.begin;
+      return true;
+    } catch (e) { return false; }
+  }
+
+  let timerSalva = null;
+  const apertarSemSalvar = apertar;
+  apertar = function (id) {
+    apertarSemSalvar(id);
+    clearTimeout(timerSalva);
+    timerSalva = setTimeout(salvar, 80);
+  };
+
+  aplicarArranjo();
+  if (carregarSalvo()) {
+    dica("Cálculo anterior restaurado (n, i, PV, PMT, FV, fluxos e memórias). f CLx apaga.", false);
+  }
+  render();
+})();
+</script>
+</body>
+</html>
